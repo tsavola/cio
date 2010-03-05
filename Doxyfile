@@ -1,0 +1,26 @@
+# Doxyfile 1.6.1
+
+OUTPUT_DIRECTORY       = doc
+REPEAT_BRIEF           = NO
+ALWAYS_DETAILED_SEC    = NO
+OPTIMIZE_OUTPUT_FOR_C  = YES
+EXTRACT_STATIC         = NO
+HIDE_UNDOC_MEMBERS     = YES
+SHOW_INCLUDE_FILES     = NO
+MAX_INITIALIZER_LINES  = 0
+SHOW_USED_FILES        = NO
+SHOW_FILES             = NO
+LAYOUT_FILE            = doc/layout.xml
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES
+INPUT                  = README cio
+EXCLUDE                = cio/*-internal.h
+VERBATIM_HEADERS       = NO
+HTML_HEADER            = doc/header.html
+HTML_FOOTER            = doc/footer.html
+DISABLE_INDEX          = YES
+SEARCHENGINE           = NO
+GENERATE_LATEX         = NO
+GENERATE_MAN           = NO

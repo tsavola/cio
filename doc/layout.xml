@@ -1,0 +1,24 @@
+<doxygenlayout version="1.0">
+  <group>
+    <detaileddescription/>
+    <memberdecl>
+      <nestedgroups/>
+      <defines/>
+      <typedefs/>
+      <enums/>
+      <enumvalues/>
+      <classes/>
+      <functions/>
+      <variables/>
+    </memberdecl>
+    <memberdef>
+      <pagedocs/>
+      <defines/>
+      <typedefs/>
+      <enums/>
+      <enumvalues/>
+      <functions/>
+      <variables/>
+    </memberdef>
+  </group>
+</doxygenlayout>

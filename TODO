@@ -1,0 +1,13 @@
+cio
+
+  * support simultaneous read/write for a file descriptor
+  * buffered channels
+  * working cio_sleep() and cio_sleepfd()
+  * implicit multithreading
+
+
+httpd
+
+  * code cleanup
+  * cgi
+
