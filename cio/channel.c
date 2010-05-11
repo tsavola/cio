@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "atomic-internal.h"
 #include "list-internal.h"
 #include "sched.h"
 
@@ -101,7 +102,7 @@ struct cio_channel *cio_channel_create(size_t item_size)
  */
 struct cio_channel *cio_channel_ref(struct cio_channel *c)
 {
-	c->refs++;
+	cio_increment(&c->refs);
 	return c;
 }
 
@@ -111,7 +112,7 @@ struct cio_channel *cio_channel_ref(struct cio_channel *c)
  */
 void cio_channel_unref(struct cio_channel *c)
 {
-	if (--c->refs == 0)
+	if (cio_decrement(&c->refs) == 0)
 		free(c);
 }
 
