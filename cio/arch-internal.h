@@ -7,6 +7,6 @@
 
 #include "attr-internal.h"
 
-void CIO_INTERNAL CIO_NORETURN cio_start(void *argument, void (*routine)(void *), void *stack);
+void CIO_INTERNAL CIO_NORETURN cio_start(void (*func)(void *), void *arg, void *stack, void (*call)(void (*)(void *), void *));
 
 #endif

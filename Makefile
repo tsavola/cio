@@ -1,5 +1,6 @@
 CFLAGS		+= -g -Wall
 CCFLAGS		+= -std=gnu99
+CXXFLAGS	+= -std=c++0x
 
 LIBRARIES	:= cio
 BINARIES	:= httpd

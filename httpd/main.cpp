@@ -2,12 +2,11 @@
  * Copyright (c) 2010  Timo Savola
  */
 
-#include <errno.h>
-#include <signal.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
+#include <cerrno>
+#include <csignal>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
 
 #include <fcntl.h>
 #include <netdb.h>
@@ -18,18 +17,17 @@
 
 #include <sys/signalfd.h>
 
+#include <cio/error.hpp>
 #include <cio/io.h>
-#include <cio/routine.h>
+#include <cio/routine.hpp>
 #include <cio/socket.h>
 #include <cio/util.h>
 
 #define FAVICON "/usr/share/pixmaps/diffuse.png"
 #define VERBOSE false
 
-static void handler(void *arg)
+static void handler(int &fd)
 {
-	int fd = *(int *) arg;
-
 	if (VERBOSE)
 		printf("[%d] connected\n", fd);
 
@@ -162,10 +160,8 @@ fail:
 		printf("[%d] disconnected\n", fd);
 }
 
-static void listener(void *arg)
+static void listener(int &listen_fd)
 {
-	int listen_fd = *(int *) arg;
-
 	while (true) {
 		int conn_fd = cio_accept4(listen_fd, NULL, NULL, SOCK_NONBLOCK | SOCK_CLOEXEC);
 
@@ -177,8 +173,10 @@ static void listener(void *arg)
 			break;
 		}
 
-		if (cio_launch(handler, &conn_fd, sizeof (conn_fd)) < 0) {
-			perror("cio_launch");
+		try {
+			cio::launch(handler, conn_fd);
+		} catch (cio::error) {
+			perror("cio::launch");
 			break;
 		}
 	}
@@ -223,10 +221,10 @@ int main(int argc, char **argv)
 		const char *node = argv[argn];
 
 		struct addrinfo *info;
-		struct addrinfo hints = {
-			.ai_flags = AI_ADDRCONFIG,
-			.ai_socktype = SOCK_STREAM,
-		};
+		struct addrinfo hints = { 0 };
+
+		hints.ai_flags = AI_ADDRCONFIG;
+		hints.ai_socktype = SOCK_STREAM;
 
 		int ret = getaddrinfo(node, service, &hints, &info);
 		if (ret < 0) {
@@ -253,8 +251,10 @@ int main(int argc, char **argv)
 				goto fail;
 			}
 
-			if (cio_launch(listener, &fd, sizeof (fd)) < 0) {
-				perror("cio_launch");
+			try {
+				cio::launch(listener, fd);
+			} catch (cio::error) {
+				perror("cio::launch");
 				goto fail;
 			}
 

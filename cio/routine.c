@@ -16,6 +16,7 @@
 #include <sys/mman.h>
 
 #include "arch-internal.h"
+#include "error-internal.h"
 #include "sched-internal.h"
 
 #define STACK_SIZE          0x800000
@@ -45,18 +46,37 @@ static void cio_stack_free(void *stack, size_t size)
 	munmap(stack - size, size);
 }
 
+static int cio_launch_init(void *target, void *source, size_t size)
+{
+	memcpy(target, source, size);
+	return 0;
+}
+
+static void cio_launch_call(void (*func)(void *), void *arg)
+{
+	func(arg);
+}
+
 /**
  * Create and schedule a new routine.  The routine will receive a copy of the
  * argument, allocated on its own stack.
  *
- * @param routine  a function to execute
+ * @param func     a function to execute
  * @param arg      pointer to an argument for to the routine
  * @param argsize  size of the argument
  *
  * @retval 0 on success
  * @retval -1 on error with @c errno set
  */
-int cio_launch(void (*routine)(void *), const void *arg, size_t argsize)
+int cio_launch(void (*func)(void *), const void *arg, size_t argsize)
+{
+	return cio_launch5(func, (void *) arg, argsize, cio_launch_init, cio_launch_call);
+}
+
+/**
+ * @internal
+ */
+int cio_launch5(void (*func)(void *), void *arg, size_t argsize, int (*init)(void *, void *, size_t), void (*call)(void (*)(void *), void *))
 {
 	if (argsize > STACK_SIZE - GUARD_SIZE * 2) {
 		errno = ENOMEM;
@@ -71,7 +91,12 @@ int cio_launch(void (*routine)(void *), const void *arg, size_t argsize)
 
 	stack -= (argsize + sizeof (long) - 1) & ~(size_t) (sizeof (long) - 1);
 	void *stackarg = stack;
-	memcpy(stackarg, arg, argsize);
+	if (init(stackarg, arg, argsize) < 0) {
+		int saved_errno = errno;
+		cio_stack_free(stack_top, STACK_SIZE);
+		errno = saved_errno;
+		return -1;
+	}
 
 	stack -= sizeof (void *);
 	*(void **) stack = stack_top;
@@ -80,7 +105,7 @@ int cio_launch(void (*routine)(void *), const void *arg, size_t argsize)
 
 	if (cio_save(&node.context) == 0) {
 		cio_runnable(&node);
-		cio_start(stackarg, routine, stack);
+		cio_start(func, stackarg, stack, call);
 	}
 
 	return 0;
@@ -128,7 +153,7 @@ void CIO_INTERNAL *cio_cleanup_stack(void)
 	if (stack == NULL) {
 		stack = cio_stack_alloc(CLEANUP_STACK_SIZE, CLEANUP_GUARD_SIZE);
 		if (stack == NULL)
-			abort();
+			cio_abort("Failed to allocate memory for cleanup stack", errno);
 
 		pthread_setspecific(cio_cleanup_key, stack);
 	}

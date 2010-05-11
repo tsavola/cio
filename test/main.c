@@ -50,6 +50,7 @@ int main(int argc, char **argv)
 	test(channel);
 	test(channel_select);
 	test(socket);
+	test(cpp);
 
 	return passed == tests ? 0 : 1;
 }

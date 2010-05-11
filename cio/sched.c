@@ -16,6 +16,7 @@
 
 #include <sys/epoll.h>
 
+#include "error-internal.h"
 #include "list-internal.h"
 
 static int cio_event_fd = -1;
@@ -71,7 +72,7 @@ static void CIO_NORETURN cio_sched_event(void)
 
 	while (epoll_wait(cio_event_fd, &event, 1, -1) < 0)
 		if (errno != EINTR)
-			abort();
+			cio_abort("Unexpected error while waiting for events", errno);
 
 	cio_resume(event.data.ptr, cio_events_from_epoll(event.events));
 }
