@@ -75,7 +75,6 @@ int cio_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
  * @param sockfd   socket file descriptor
  * @param addr     buffer for socket address or @c NULL
  * @param addrlen  size of the address buffer or @c NULL
- * @param flags    Linux-specific file descriptor flags
  *
  * @retval >=0 a new connection socket file descriptor
  * @retval -1 on error with @c errno set
@@ -83,9 +82,21 @@ int cio_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
  * @pre @p fd should be in non-blocking mode
  *
  * @see @c accept(2)
+ */
+int cio_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
+{
+	return cio_accept4(sockfd, addr, addrlen, 0);
+}
+
+/**
+ * Accept a connection on a socket.
+ *
+ * @param flags  for the new file descriptor
+ *
+ * @see cio_accept()
  * @see @c accept4(2)
  */
-int cio_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags)
+int cio_accept4(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags)
 {
 	struct cio_context context;
 	int fd;

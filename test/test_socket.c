@@ -69,7 +69,7 @@ static void acceptor(void *accept_args)
 
 	printf("accept\n");
 
-	int connfd = cio_accept(fd, NULL, NULL, SOCK_NONBLOCK);
+	int connfd = cio_accept4(fd, NULL, NULL, SOCK_NONBLOCK);
 	assert(connfd >= 0);
 
 	printf("accepted\n");

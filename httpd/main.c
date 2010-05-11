@@ -167,7 +167,7 @@ static void listener(void *arg)
 	int listen_fd = *(int *) arg;
 
 	while (true) {
-		int conn_fd = cio_accept(listen_fd, NULL, NULL, SOCK_NONBLOCK | SOCK_CLOEXEC);
+		int conn_fd = cio_accept4(listen_fd, NULL, NULL, SOCK_NONBLOCK | SOCK_CLOEXEC);
 
 		if (conn_fd < 0) {
 			if (errno == ECONNABORTED)
