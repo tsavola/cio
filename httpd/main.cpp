@@ -17,7 +17,6 @@
 
 #include <sys/signalfd.h>
 
-#include <cio/error.hpp>
 #include <cio/io.h>
 #include <cio/routine.hpp>
 #include <cio/socket.h>
@@ -173,12 +172,7 @@ static void listener(int &listen_fd)
 			break;
 		}
 
-		try {
-			cio::launch(handler, conn_fd);
-		} catch (cio::error) {
-			perror("cio::launch");
-			break;
-		}
+		cio::launch(handler, conn_fd);
 	}
 
 	close(listen_fd);
@@ -251,12 +245,7 @@ int main(int argc, char **argv)
 				goto fail;
 			}
 
-			try {
-				cio::launch(listener, fd);
-			} catch (cio::error) {
-				perror("cio::launch");
-				goto fail;
-			}
+			cio::launch(listener, fd);
 
 			listeners++;
 			continue;

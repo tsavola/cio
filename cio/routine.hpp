@@ -11,13 +11,11 @@
  * @{
  */
 
-#include <cerrno>
+#include <stdexcept>
 #include <type_traits>
 
 #include "error.h"
 #include "routine.h"
-
-#include "error.hpp"
 
 namespace cio {
 
@@ -29,10 +27,9 @@ struct launch_arg;
 
 template <typename T>
 struct launch_arg<T, true> {
-	static inline int init(void *buf, void *orig, size_t) throw ()
+	inline void init(void *stack, T &arg) throw ()
 	{
-		*reinterpret_cast<T *> (buf) = *reinterpret_cast<T *> (orig);
-		return 0;
+		*reinterpret_cast<T *> (stack) = arg;
 	}
 
 	static inline void destroy(T *) throw ()
@@ -42,15 +39,20 @@ struct launch_arg<T, true> {
 
 template <typename T>
 struct launch_arg<T, false> {
-	static inline int init(void *buf, void *orig, size_t) throw ()
+	void *orphan;
+
+	inline void init(void *stack, T &arg)
 	{
-		try {
-			new (buf) T(*reinterpret_cast<T *> (orig));
-			return 0;
-		} catch (...) {
-			cio_error("Exception thrown in routine argument copy constructor", 0);
-			errno = EINVAL;
-			return -1;
+		orphan = stack;
+		new (stack) T(arg);
+		orphan = 0;
+	}
+
+	inline ~launch_arg() throw ()
+	{
+		if (orphan) {
+			destroy(reinterpret_cast<T *> (orphan));
+			cio_launch_cancel(orphan, sizeof (T));
 		}
 	}
 
@@ -59,7 +61,7 @@ struct launch_arg<T, false> {
 		try {
 			ptr->~T();
 		} catch (...) {
-			cio_error("Exception thrown in routine argument destructor", 0);
+			cio_error("Exception thrown in routine argument destructor");
 		}
 	}
 };
@@ -74,7 +76,7 @@ void launch_call(void (*func)(void *), void *buf) throw ()
 	try {
 		((void (*)(T &)) func)(*arg);
 	} catch (...) {
-		cio_error("Uncaught exception in routine", 0);
+		cio_error("Uncaught exception in routine");
 	}
 	launch_arg<T, std::is_pod<T>::value>::destroy(arg);
 }
@@ -83,11 +85,16 @@ void launch_call(void (*func)(void *), void *buf) throw ()
  * @see cio_launch()
  */
 template <typename T>
-inline void launch(void (*func)(T &), T &arg) throw (error)
+void launch(void (*func)(T &), T &arg) throw (std::bad_alloc)
 {
-	int ret = cio_launch5((void (*)(void *)) func, &arg, sizeof (T), launch_arg<T, std::is_pod<T>::value>::init, launch_call<T>);
-	if (ret < 0)
-		throw error(ret);
+	void *stack = cio_launch_prepare(sizeof (T));
+	if (!stack)
+		throw std::bad_alloc();
+
+	launch_arg<T, std::is_pod<T>::value> sentinel;
+	sentinel.init(stack, arg);
+
+	cio_launch_finish(stack, (void (*)(void *)) func, sizeof (T), launch_call<T>);
 }
 
 } // namespace cio

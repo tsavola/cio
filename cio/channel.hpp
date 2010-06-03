@@ -13,9 +13,8 @@
 
 #include "channel.h"
 
+#include <cassert>
 #include <stdexcept>
-
-#include "error.hpp"
 
 namespace cio {
 
@@ -37,7 +36,7 @@ public:
 	/**
 	 * TODO
 	 */
-	channel(struct cio_channel *c_ptr) throw () : c(c_ptr)
+	explicit channel(struct cio_channel *c_ptr) throw () : c(c_ptr)
 	{
 	}
 
@@ -62,22 +61,20 @@ public:
 	/**
 	 * TODO
 	 */
-	channel &operator>>(T &item) throw (error)
+	channel &operator>>(T &item) throw ()
 	{
 		int ret = cio_channel_read(c, reinterpret_cast<void *> (&item), sizeof (T));
-		if (ret < 0)
-			throw error(ret);
+		assert(ret == 1);
 		return *this;
 	}
 
 	/**
 	 * TODO
 	 */
-	channel &operator<<(const T &item) throw (error)
+	channel &operator<<(const T &item) throw ()
 	{
 		int ret = cio_channel_write(c, reinterpret_cast<const void *> (&item), sizeof (T));
-		if (ret < 0)
-			throw error(ret);
+		assert(ret == 1);
 		return *this;
 	}
 

@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-void cio_error(const char *message, int error);
+void cio_error(const char *format, ...);
 
 #ifdef __cplusplus
 }

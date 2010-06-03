@@ -46,10 +46,9 @@ static void cio_stack_free(void *stack, size_t size)
 	munmap(stack - size, size);
 }
 
-static int cio_launch_init(void *target, void *source, size_t size)
+static size_t cio_alignment(size_t size)
 {
-	memcpy(target, source, size);
-	return 0;
+	return (size + sizeof (long) - 1) & ~(size_t) (sizeof (long) - 1);
 }
 
 static void cio_launch_call(void (*func)(void *), void *arg)
@@ -70,34 +69,40 @@ static void cio_launch_call(void (*func)(void *), void *arg)
  */
 int cio_launch(void (*func)(void *), const void *arg, size_t argsize)
 {
-	return cio_launch5(func, (void *) arg, argsize, cio_launch_init, cio_launch_call);
+	void *stack = cio_launch_prepare(argsize);
+	if (stack == NULL)
+		return -1;
+
+	memcpy(stack, arg, argsize);
+	cio_launch_finish(stack, func, argsize, cio_launch_call);
+	return 0;
 }
 
 /**
  * @internal
  */
-int cio_launch5(void (*func)(void *), void *arg, size_t argsize, int (*init)(void *, void *, size_t), void (*call)(void (*)(void *), void *))
+void *cio_launch_prepare(size_t argsize)
 {
 	if (argsize > STACK_SIZE - GUARD_SIZE * 2) {
 		errno = ENOMEM;
-		return -1;
+		return NULL;
 	}
 
 	void *stack_top = cio_stack_alloc(STACK_SIZE, GUARD_SIZE);
 	if (stack_top == NULL)
-		return -1;
+		return NULL;
 
-	void *stack = stack_top;
+	return stack_top - cio_alignment(argsize);
+}
 
-	stack -= (argsize + sizeof (long) - 1) & ~(size_t) (sizeof (long) - 1);
+/**
+ * @internal
+ */
+void cio_launch_finish(void *stack, void (*func)(void *), size_t argsize, void (*call)(void (*)(void *), void *))
+{
 	void *stackarg = stack;
-	if (init(stackarg, arg, argsize) < 0) {
-		int saved_errno = errno;
-		cio_stack_free(stack_top, STACK_SIZE);
-		errno = saved_errno;
-		return -1;
-	}
 
+	void *stack_top = stack + cio_alignment(argsize);
 	stack -= sizeof (void *);
 	*(void **) stack = stack_top;
 
@@ -107,8 +112,15 @@ int cio_launch5(void (*func)(void *), void *arg, size_t argsize, int (*init)(voi
 		cio_runnable(&node);
 		cio_start(func, stackarg, stack, call);
 	}
+}
 
-	return 0;
+/**
+ * @internal
+ */
+void cio_launch_cancel(void *stack, size_t argsize)
+{
+	void *stack_top = stack + cio_alignment(argsize);
+	cio_stack_free(stack_top, STACK_SIZE);
 }
 
 /**

@@ -18,7 +18,10 @@ extern "C" {
 #endif
 
 int cio_launch(void (*routine)(void *), const void *arg, size_t argsize);
-int cio_launch5(void (*routine)(void *), void *arg, size_t argsize, int (*init)(void *, void *, size_t), void (*call)(void (*)(void *), void *));
+
+void *cio_launch_prepare(size_t argsize);
+void cio_launch_finish(void *stack, void (*func)(void *), size_t argsize, void (*call)(void (*)(void *), void *));
+void cio_launch_cancel(void *stack, size_t argsize);
 
 #ifdef __cplusplus
 }

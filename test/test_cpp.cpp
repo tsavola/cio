@@ -2,7 +2,6 @@
 #include <stdexcept>
 
 #include <cio/channel.hpp>
-#include <cio/error.hpp>
 #include <cio/routine.hpp>
 
 #include "assert.h"

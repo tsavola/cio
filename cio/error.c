@@ -5,6 +5,7 @@
 #include "error-internal.h"
 #include "error.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,12 +15,15 @@
 /**
  * @internal
  */
-void cio_error(const char *message, int error)
+void cio_error(const char *format, ...)
 {
-	if (error)
-		fprintf(stderr, PREFIX "%s: %s\n", message, strerror(error));
-	else
-		fprintf(stderr, PREFIX "%s\n", message);
+	va_list ap;
+
+	va_start(ap, format);
+	fprintf(stderr, PREFIX);
+	vfprintf(stderr, format, ap);
+	fprintf(stderr, "\n");
+	va_end(ap);
 }
 
 /**
@@ -27,6 +31,6 @@ void cio_error(const char *message, int error)
  */
 void CIO_NORETURN cio_abort(const char *message, int error)
 {
-	cio_error(message, error);
+	cio_error("%s: %s", message, strerror(error));
 	abort();
 }
