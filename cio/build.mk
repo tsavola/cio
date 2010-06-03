@@ -8,7 +8,7 @@ LDFLAGS		:= -pthread
 
 include build/library.mk
 
-HEADERS		:= $(filter-out $(wilrdcard cio/*-internal.h),$(wildcard cio/*.h))
+HEADERS		:= $(filter-out $(wildcard cio/*-internal.h),$(wildcard cio/*.h))
 
 install::
 	$(QUIET) install -d $(DEST_PREFIX)/include/cio
