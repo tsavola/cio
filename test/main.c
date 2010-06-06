@@ -34,7 +34,7 @@ static void run(void (*func)(void), const char *name)
 	if (status == 0)
 		passed++;
 	else
-		fprintf(stderr, "test_%s failed with status %d\n", name, status);
+		fprintf(stderr, "%s: test_%s() failed with status %d\n", progname, name, status);
 }
 
 #define test(name) \
@@ -50,12 +50,7 @@ int main(int argc, char **argv)
 {
 	progname = argv[0];
 
-	test(io);
-	test(sendfile);
-	test(channel);
-	test(channel_select);
-	test(socket);
-	test(cpp);
+#include "test/suite.h"
 
 	return passed == tests ? 0 : 1;
 }
