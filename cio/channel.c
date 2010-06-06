@@ -116,6 +116,11 @@ void cio_channel_unref(struct cio_channel *c)
 		free(c);
 }
 
+size_t cio_channel_item_size(const struct cio_channel *c)
+{
+	return c->item_size;
+}
+
 /**
  * Read an item from the channel.
  *

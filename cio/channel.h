@@ -64,6 +64,7 @@ struct cio_channel *cio_channel_create(size_t item_size);
 struct cio_channel *cio_channel_ref(struct cio_channel *);
 void cio_channel_unref(struct cio_channel *);
 int cio_channel_read(struct cio_channel *, void *item, size_t item_size);
+size_t cio_channel_item_size(const struct cio_channel *);
 int cio_channel_write(struct cio_channel *, const void *item, size_t item_size);
 int cio_channel_select(const struct cio_channel_op *ops, unsigned int nops);
 

@@ -38,6 +38,7 @@ public:
 	 */
 	explicit channel(struct cio_channel *c_ptr) throw () : c(c_ptr)
 	{
+		assert(cio_channel_item_size(c) == sizeof (T));
 	}
 
 	channel(channel &other) throw () : c(other.c)
@@ -63,8 +64,7 @@ public:
 	 */
 	channel &operator>>(T &item) throw ()
 	{
-		int ret = cio_channel_read(c, reinterpret_cast<void *> (&item), sizeof (T));
-		assert(ret == 1);
+		cio_channel_read(c, reinterpret_cast<void *> (&item), sizeof (T));
 		return *this;
 	}
 
@@ -73,8 +73,7 @@ public:
 	 */
 	channel &operator<<(const T &item) throw ()
 	{
-		int ret = cio_channel_write(c, reinterpret_cast<const void *> (&item), sizeof (T));
-		assert(ret == 1);
+		cio_channel_write(c, reinterpret_cast<const void *> (&item), sizeof (T));
 		return *this;
 	}
 
