@@ -8,6 +8,7 @@
 
 #include "assert.h"
 
+static const char *progname;
 static int tests;
 static int passed;
 
@@ -15,6 +16,8 @@ static void run(void (*func)(void), const char *name)
 {
 	pid_t pid;
 	int status;
+
+	printf("  %-9s %s %s\n", "Check", progname, name);
 
 	tests++;
 
@@ -45,6 +48,8 @@ static void run(void (*func)(void), const char *name)
 
 int main(int argc, char **argv)
 {
+	progname = argv[0];
+
 	test(io);
 	test(sendfile);
 	test(channel);
