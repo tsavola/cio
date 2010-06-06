@@ -40,10 +40,12 @@ static void run(void (*func)(void), const char *name)
 #define test(name) \
 	do { \
 		void test_##name(void); \
-		if (argc <= 1) \
+		if (argc == 1) { \
 			run(test_##name, #name); \
-		else if (strcmp(argv[1], #name) == 0) \
+		} else if (argc == 2 && strcmp(argv[1], #name) == 0) { \
 			test_##name(); \
+			return 0; \
+		} \
 	} while (0)
 
 int main(int argc, char **argv)
@@ -51,6 +53,11 @@ int main(int argc, char **argv)
 	progname = argv[0];
 
 #include "test/suite.h"
+
+	if (argc > 1) {
+		fprintf(stderr, "%s: no such test\n", progname);
+		return 1;
+	}
 
 	return passed == tests ? 0 : 1;
 }
