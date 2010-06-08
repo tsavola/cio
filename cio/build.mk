@@ -3,8 +3,8 @@ ARCH		:= $(shell $(CC) -dumpmachine | cut -d- -f1)
 NAME		:= cio
 VERSION		:= 0
 SOURCES		:= $(wildcard cio/*.c) cio/arch-$(ARCH).S
-CPPFLAGS	:= -pthread
-LDFLAGS		:= -pthread
+CPPFLAGS	+= -pthread
+LDFLAGS		+= -pthread
 
 include build/library.mk
 

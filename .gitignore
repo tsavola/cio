@@ -2,6 +2,7 @@ tags
 TAGS
 doc/html/
 debug/
+trace/
 profile/
 optimize/
 gmon.out

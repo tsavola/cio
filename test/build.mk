@@ -1,7 +1,7 @@
 NAME		:= test
 SOURCES		:= $(wildcard test/*.c) $(wildcard test/*.cpp)
-CPPFLAGS	:= -I. -I$(O)
-LDFLAGS		:= -pthread
+CPPFLAGS	+= -I. -I$(O)
+LDFLAGS		+= -pthread
 LIBS		:= $(O)/lib/libcio.a
 DEPENDS		:= $(LIBS)
 
