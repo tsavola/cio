@@ -21,12 +21,8 @@
 #define STACK_SIZE          0x800000
 #define GUARD_SIZE          0x1000
 
-#define CLEANUP_STACK_SIZE  0x2000
-#define CLEANUP_GUARD_SIZE  0x1000
-
 struct cio_routine {
 	ucontext_t ucontext;
-	void *stack;
 	char arg[0];
 };
 
@@ -91,14 +87,14 @@ void *cio_launch_prepare(void (*func)(void *), size_t argsize, void CIO_NORETURN
 	if (routine == NULL)
 		goto no_routine;
 
-	routine->stack = cio_stack_alloc(STACK_SIZE, GUARD_SIZE);
-	if (routine->stack == NULL)
+	void *stack = cio_stack_alloc(STACK_SIZE, GUARD_SIZE);
+	if (stack == NULL)
 		goto no_stack;
 
 	if (getcontext(&routine->ucontext) < 0)
 		goto no_context;
 
-	routine->ucontext.uc_stack.ss_sp = routine->stack;
+	routine->ucontext.uc_stack.ss_sp = stack;
 	routine->ucontext.uc_stack.ss_size = STACK_SIZE;
 
 	/* TODO: pointer arguments are not portable */
@@ -107,7 +103,7 @@ void *cio_launch_prepare(void (*func)(void *), size_t argsize, void CIO_NORETURN
 	return routine->arg;
 
 no_context:
-	cio_stack_free(routine->stack, STACK_SIZE);
+	cio_stack_free(stack, STACK_SIZE);
 no_stack:
 	free(routine);
 no_routine:
@@ -156,6 +152,6 @@ void CIO_INTERNAL cio_cleanup(void *arg)
 {
 	struct cio_routine *routine = cio_arg_routine(arg);
 
-	cio_stack_free(routine->stack, STACK_SIZE);
+	cio_stack_free(routine->ucontext.uc_stack.ss_sp, routine->ucontext.uc_stack.ss_size);
 	free(routine);
 }
