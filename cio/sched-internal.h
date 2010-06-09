@@ -5,9 +5,13 @@
 #ifndef CIO_SCHED_INTERNAL_H
 #define CIO_SCHED_INTERNAL_H
 
-#include <setjmp.h>
+#include <errno.h>
 
-#include "attr-internal.h"
+#include <ucontext.h>
+
+#include "attr.h"
+#include "error-internal.h"
+#include "routine-internal.h"
 #include "sched.h"
 
 /**
@@ -38,9 +42,17 @@ struct cio_runnable {
  * @retval non-0 when the execution is resumed
  */
 #define cio_save(storage) \
-	setjmp((storage)->env)
+	({ \
+		struct cio_context *context = (storage); \
+		context->value = 0; \
+		if (getcontext(&context->ucontext) < 0) \
+			cio_abort("Failed to save context", errno); \
+		if (context->value && context->cleanup) \
+			cio_cleanup(context->cleanup); \
+		context->value; \
+	})
 
 void CIO_INTERNAL cio_runnable(struct cio_runnable *node);
-void CIO_INTERNAL CIO_NORETURN cio_sched(void);
+void CIO_INTERNAL CIO_NORETURN cio_sched(void *cleanup);
 
 #endif

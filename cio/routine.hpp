@@ -27,9 +27,9 @@ struct launch_arg;
 
 template <typename T>
 struct launch_arg<T, true> {
-	inline void init(void *stack, T &arg) throw ()
+	inline void init(void *target_arg, T &source_arg) throw ()
 	{
-		*reinterpret_cast<T *> (stack) = arg;
+		*reinterpret_cast<T *> (target_arg) = source_arg;
 	}
 
 	static inline void destroy(T *) throw ()
@@ -39,20 +39,20 @@ struct launch_arg<T, true> {
 
 template <typename T>
 struct launch_arg<T, false> {
-	void *orphan;
+	void *orphan_arg;
 
-	inline void init(void *stack, T &arg)
+	inline void init(void *target_arg, T &source_arg)
 	{
-		orphan = stack;
-		new (stack) T(arg);
-		orphan = 0;
+		orphan_arg = target_arg;
+		new (target_arg) T(source_arg);
+		orphan_arg = 0;
 	}
 
 	inline ~launch_arg() throw ()
 	{
-		if (orphan) {
-			destroy(reinterpret_cast<T *> (orphan));
-			cio_launch_cancel(orphan, sizeof (T));
+		if (orphan_arg) {
+			destroy(reinterpret_cast<T *> (orphan_arg));
+			cio_launch_cancel(orphan_arg);
 		}
 	}
 
@@ -70,15 +70,16 @@ struct launch_arg<T, false> {
  * @internal
  */
 template <typename T>
-void launch_call(void (*func)(void *), void *buf) throw ()
+void CIO_NORETURN launch_call(void (*func)(void *), void *void_arg) throw ()
 {
-	T *arg = reinterpret_cast<T *> (buf);
+	T *type_arg = reinterpret_cast<T *> (void_arg);
 	try {
-		((void (*)(T &)) func)(*arg);
+		((void (*)(T &)) func)(*type_arg);
 	} catch (...) {
 		cio_error("Uncaught exception in routine");
 	}
-	launch_arg<T, std::is_pod<T>::value>::destroy(arg);
+	launch_arg<T, std::is_pod<T>::value>::destroy(type_arg);
+	cio_launch_exit(void_arg);
 }
 
 /**
@@ -87,14 +88,14 @@ void launch_call(void (*func)(void *), void *buf) throw ()
 template <typename T>
 void launch(void (*func)(T &), T &arg) throw (std::bad_alloc)
 {
-	void *stack = cio_launch_prepare(sizeof (T));
-	if (!stack)
+	void *routine_arg = cio_launch_prepare((void (*)(void *)) func, sizeof (T), launch_call<T>);
+	if (!routine_arg)
 		throw std::bad_alloc();
 
 	launch_arg<T, std::is_pod<T>::value> sentinel;
-	sentinel.init(stack, arg);
+	sentinel.init(routine_arg, arg);
 
-	cio_launch_finish(stack, (void (*)(void *)) func, sizeof (T), launch_call<T>);
+	cio_launch_finish(routine_arg);
 }
 
 } // namespace cio

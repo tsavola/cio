@@ -6,12 +6,12 @@
 #include "sched.h"
 
 #include <errno.h>
-#include <setjmp.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 
 #include <pthread.h>
+#include <ucontext.h>
 #include <unistd.h>
 
 #include <sys/epoll.h>
@@ -23,9 +23,16 @@
 static int cio_event_fd = -1;
 static struct cio_list cio_runnable_list;
 
-static void CIO_NORETURN cio_resume(struct cio_context *target, int value)
+static void CIO_NORETURN cio_resume(struct cio_context *target, int value, void *cleanup)
 {
-	longjmp(target->env, value);
+	if (value == 0)
+		value = 1;
+
+	target->value = value;
+	target->cleanup = cleanup;
+
+	setcontext(&target->ucontext);
+	cio_abort("Failed to resume context", errno);
 }
 
 static int cio_events_to_epoll(int cio)
@@ -58,18 +65,18 @@ static void cio_event_init(void)
 	pthread_once(&once, cio_event_create);
 }
 
-static void cio_sched_runnable(void)
+static void cio_sched_runnable(void *cleanup)
 {
 	struct cio_runnable *node = cio_list_head(struct cio_runnable, &cio_runnable_list);
 	if (node) {
 		cio_tracef("%s: resume runnable %p", __func__, node);
 
 		cio_list_remove_head(struct cio_runnable, &cio_runnable_list);
-		cio_resume(&node->context, 1);
+		cio_resume(&node->context, 1, cleanup);
 	}
 }
 
-static void CIO_NORETURN cio_sched_event(void)
+static void CIO_NORETURN cio_sched_event(void *cleanup)
 {
 	struct epoll_event event;
 
@@ -79,7 +86,7 @@ static void CIO_NORETURN cio_sched_event(void)
 
 	cio_tracef("%s: resume context %p", __func__, event.data.ptr);
 
-	cio_resume(event.data.ptr, cio_events_from_epoll(event.events));
+	cio_resume(event.data.ptr, cio_events_from_epoll(event.events), cleanup);
 }
 
 /**
@@ -87,10 +94,10 @@ static void CIO_NORETURN cio_sched_event(void)
  *
  * @internal
  */
-void CIO_INTERNAL CIO_NORETURN cio_sched(void)
+void CIO_INTERNAL CIO_NORETURN cio_sched(void *cleanup)
 {
-	cio_sched_runnable();
-	cio_sched_event();
+	cio_sched_runnable(cleanup);
+	cio_sched_event(cleanup);
 }
 
 /**
@@ -159,7 +166,7 @@ int cio_yield(struct cio_context *storage)
 	int ret = cio_save(storage);
 
 	if (ret == 0)
-		cio_sched();
+		cio_sched(NULL);
 
 	return ret;
 }
@@ -181,7 +188,7 @@ void cio_run(struct cio_context *target, int value)
 
 	if (cio_save(&node.context) == 0) {
 		cio_runnable(&node);
-		cio_resume(target, value);
+		cio_resume(target, value, NULL);
 	}
 
 	cio_tracef("%s: free runnable %p", __func__, &node);

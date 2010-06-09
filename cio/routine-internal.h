@@ -5,9 +5,8 @@
 #ifndef CIO_ROUTINE_INTERNAL_H
 #define CIO_ROUTINE_INTERNAL_H
 
-#include "attr-internal.h"
+#include "attr.h"
 
-void CIO_INTERNAL *cio_cleanup_stack(void);
-void CIO_INTERNAL CIO_NORETURN cio_cleanup(void *stack);
+void CIO_INTERNAL cio_cleanup(void *arg);
 
 #endif

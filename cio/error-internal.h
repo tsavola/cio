@@ -5,7 +5,7 @@
 #ifndef CIO_ERROR_INTERNAL_H
 #define CIO_ERROR_INTERNAL_H
 
-#include "attr-internal.h"
+#include "attr.h"
 
 void CIO_NORETURN cio_abort(const char *message, int error);
 

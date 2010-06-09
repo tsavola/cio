@@ -1,8 +1,6 @@
-ARCH		:= $(shell $(CC) -dumpmachine | cut -d- -f1)
-
 NAME		:= cio
 VERSION		:= 0
-SOURCES		:= $(wildcard cio/*.c) cio/arch-$(ARCH).S
+SOURCES		:= $(wildcard cio/*.c)
 CPPFLAGS	+= -pthread
 LDFLAGS		+= -pthread
 

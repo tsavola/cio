@@ -6,18 +6,17 @@
 #include "routine.h"
 
 #include <errno.h>
-#include <setjmp.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <pthread.h>
+#include <ucontext.h>
 #include <unistd.h>
 #include <sys/mman.h>
 
-#include "arch-internal.h"
 #include "error-internal.h"
 #include "sched-internal.h"
+#include "trace.h"
 
 #define STACK_SIZE          0x800000
 #define GUARD_SIZE          0x1000
@@ -25,7 +24,16 @@
 #define CLEANUP_STACK_SIZE  0x2000
 #define CLEANUP_GUARD_SIZE  0x1000
 
-static pthread_key_t cio_cleanup_key;
+struct cio_routine {
+	ucontext_t ucontext;
+	void *stack;
+	char arg[0];
+};
+
+static struct cio_routine *cio_arg_routine(void *arg)
+{
+	return arg - sizeof (struct cio_routine);
+}
 
 static void *cio_stack_alloc(size_t size, size_t guard_size)
 {
@@ -38,22 +46,18 @@ static void *cio_stack_alloc(size_t size, size_t guard_size)
 		return NULL;
 	}
 
-	return ptr + size;
+	return ptr;
 }
 
 static void cio_stack_free(void *stack, size_t size)
 {
-	munmap(stack - size, size);
+	munmap(stack, size);
 }
 
-static size_t cio_alignment(size_t size)
-{
-	return (size + sizeof (long) - 1) & ~(size_t) (sizeof (long) - 1);
-}
-
-static void cio_launch_call(void (*func)(void *), void *arg)
+static void CIO_NORETURN cio_launch_call(void (*func)(void *), void *arg)
 {
 	func(arg);
+	cio_launch_exit(arg);
 }
 
 /**
@@ -69,106 +73,89 @@ static void cio_launch_call(void (*func)(void *), void *arg)
  */
 int cio_launch(void (*func)(void *), const void *arg, size_t argsize)
 {
-	void *stack = cio_launch_prepare(argsize);
-	if (stack == NULL)
+	void *routine_arg = cio_launch_prepare(func, argsize, cio_launch_call);
+	if (routine_arg == NULL)
 		return -1;
 
-	memcpy(stack, arg, argsize);
-	cio_launch_finish(stack, func, argsize, cio_launch_call);
+	memcpy(routine_arg, arg, argsize);
+	cio_launch_finish(routine_arg);
 	return 0;
 }
 
 /**
  * @internal
  */
-void *cio_launch_prepare(size_t argsize)
+void *cio_launch_prepare(void (*func)(void *), size_t argsize, void CIO_NORETURN (*call)(void (*)(void *), void *))
 {
-	if (argsize > STACK_SIZE - GUARD_SIZE * 2) {
-		errno = ENOMEM;
-		return NULL;
-	}
+	struct cio_routine *routine = malloc(sizeof (struct cio_routine) + argsize);
+	if (routine == NULL)
+		goto no_routine;
 
-	void *stack_top = cio_stack_alloc(STACK_SIZE, GUARD_SIZE);
-	if (stack_top == NULL)
-		return NULL;
+	routine->stack = cio_stack_alloc(STACK_SIZE, GUARD_SIZE);
+	if (routine->stack == NULL)
+		goto no_stack;
 
-	return stack_top - cio_alignment(argsize);
+	if (getcontext(&routine->ucontext) < 0)
+		goto no_context;
+
+	routine->ucontext.uc_stack.ss_sp = routine->stack;
+	routine->ucontext.uc_stack.ss_size = STACK_SIZE;
+
+	/* TODO: pointer arguments are not portable */
+	makecontext(&routine->ucontext, (void (*)(void)) call, 2, func, routine->arg);
+
+	return routine->arg;
+
+no_context:
+	cio_stack_free(routine->stack, STACK_SIZE);
+no_stack:
+	free(routine);
+no_routine:
+	return NULL;
 }
 
 /**
  * @internal
  */
-void cio_launch_finish(void *stack, void (*func)(void *), size_t argsize, void (*call)(void (*)(void *), void *))
+void cio_launch_finish(void *arg)
 {
-	void *stackarg = stack;
-
-	void *stack_top = stack + cio_alignment(argsize);
-	stack -= sizeof (void *);
-	*(void **) stack = stack_top;
-
+	struct cio_routine *routine = cio_arg_routine(arg);
 	struct cio_runnable node;
+
+	cio_tracef("%s: alloc runnable %p", __func__, &node);
 
 	if (cio_save(&node.context) == 0) {
 		cio_runnable(&node);
-		cio_start(func, stackarg, stack, call);
-	}
-}
 
-/**
- * @internal
- */
-void cio_launch_cancel(void *stack, size_t argsize)
-{
-	void *stack_top = stack + cio_alignment(argsize);
-	cio_stack_free(stack_top, STACK_SIZE);
-}
+		cio_tracef("%s: routine %p", __func__, routine);
 
-/**
- * Free the resources of an exited routine and schedule another one.  This
- * function is called with the cleanup stack as the active stack, so everything
- * must fit into that.
- *
- * @param stack  the stack pointer of the routine
- *
- * @internal
- */
-void CIO_INTERNAL CIO_NORETURN cio_cleanup(void *stack)
-{
-	void *stack_top = *(void **) stack;
-	cio_stack_free(stack_top, STACK_SIZE);
-
-	cio_sched();
-}
-
-static void cio_cleanup_key_destroy(void *stack)
-{
-	cio_stack_free(stack, CLEANUP_STACK_SIZE);
-}
-
-static void cio_cleanup_key_create(void)
-{
-	pthread_key_create(&cio_cleanup_key, cio_cleanup_key_destroy);
-}
-
-/**
- * Get the cleanup stack pointer.
- *
- * @internal
- */
-void CIO_INTERNAL *cio_cleanup_stack(void)
-{
-	static pthread_once_t once = PTHREAD_ONCE_INIT;
-
-	pthread_once(&once, cio_cleanup_key_create);
-
-	void *stack = pthread_getspecific(cio_cleanup_key);
-	if (stack == NULL) {
-		stack = cio_stack_alloc(CLEANUP_STACK_SIZE, CLEANUP_GUARD_SIZE);
-		if (stack == NULL)
-			cio_abort("Failed to allocate memory for cleanup stack", errno);
-
-		pthread_setspecific(cio_cleanup_key, stack);
+		setcontext(&routine->ucontext);
+		cio_abort("Failed to launch routine", errno);
 	}
 
-	return stack;
+	cio_tracef("%s: free runnable %p", __func__, &node);
+}
+
+/**
+ * @internal
+ */
+void cio_launch_cancel(void *arg)
+{
+	cio_cleanup(arg);
+}
+
+/**
+ * @internal
+ */
+void CIO_NORETURN cio_launch_exit(void *arg)
+{
+	cio_sched(arg);
+}
+
+void CIO_INTERNAL cio_cleanup(void *arg)
+{
+	struct cio_routine *routine = cio_arg_routine(arg);
+
+	cio_stack_free(routine->stack, STACK_SIZE);
+	free(routine);
 }

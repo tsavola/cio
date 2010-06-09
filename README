@@ -9,8 +9,7 @@ during which other routines are executed.  The routines can communicate and
 synchronize between one another using channels.  This approach is related to
 concepts like Communicating Sequential Processes, Continuations and Coroutines.
 
-Currently only Linux on x86-64 is supported.  The scheduler doesn't know
-multithreading yet.
+Tested on Linux/x86-64.  The scheduler doesn't know multithreading yet.
 
 
 @par API documentation

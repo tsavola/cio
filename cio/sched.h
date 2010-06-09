@@ -11,7 +11,7 @@
  * @{
  */
 
-#include <setjmp.h>
+#include <ucontext.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,7 +41,9 @@ extern "C" {
  * @brief Buffer for saving stack and register state.
  */
 struct cio_context {
-	jmp_buf env;
+	ucontext_t ucontext;
+	int value;
+	void *cleanup;
 };
 
 int cio_register(int fd, int events, struct cio_context *target);
