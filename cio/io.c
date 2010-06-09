@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "sched.h"
+#include "trace.h"
 
 enum cio_io_type {
 	CIO_IO_READ,
@@ -31,12 +32,14 @@ enum cio_io_type {
 static ssize_t cio_io(int event, enum cio_io_type type, int fd, int extra_fd, void *buf, off_t *offset, size_t count, bool full)
 {
 	struct cio_context context;
-	ssize_t len;
+	ssize_t len = -1;
 	int err;
 	ssize_t ret;
 
+	cio_tracef("%s: alloc context %p", __func__, &context);
+
 	if (cio_register(fd, event, &context) < 0)
-		return -1;
+		goto fail;
 
 	cio_yield(&context);
 
@@ -81,6 +84,9 @@ static ssize_t cio_io(int event, enum cio_io_type type, int fd, int extra_fd, vo
 
 	if (len < 0)
 		errno = err;
+
+fail:
+	cio_tracef("%s: free context %p", __func__, &context);
 
 	return len;
 }

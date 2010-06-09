@@ -18,6 +18,7 @@
 
 #include "error-internal.h"
 #include "list-internal.h"
+#include "trace.h"
 
 static int cio_event_fd = -1;
 static struct cio_list cio_runnable_list;
@@ -61,6 +62,8 @@ static void cio_sched_runnable(void)
 {
 	struct cio_runnable *node = cio_list_head(struct cio_runnable, &cio_runnable_list);
 	if (node) {
+		cio_tracef("%s: resume runnable %p", __func__, node);
+
 		cio_list_remove_head(struct cio_runnable, &cio_runnable_list);
 		cio_resume(&node->context, 1);
 	}
@@ -73,6 +76,8 @@ static void CIO_NORETURN cio_sched_event(void)
 	while (epoll_wait(cio_event_fd, &event, 1, -1) < 0)
 		if (errno != EINTR)
 			cio_abort("Unexpected error while waiting for events", errno);
+
+	cio_tracef("%s: resume context %p", __func__, event.data.ptr);
 
 	cio_resume(event.data.ptr, cio_events_from_epoll(event.events));
 }
@@ -149,6 +154,8 @@ void cio_unregister(int fd)
  */
 int cio_yield(struct cio_context *storage)
 {
+	cio_tracef("%s: save context %p", __func__, storage);
+
 	int ret = cio_save(storage);
 
 	if (ret == 0)
@@ -168,8 +175,14 @@ void cio_run(struct cio_context *target, int value)
 {
 	struct cio_runnable node;
 
+	cio_tracef("%s: alloc runnable %p", __func__, &node);
+
+	cio_tracef("%s: resume context %p", __func__, target);
+
 	if (cio_save(&node.context) == 0) {
 		cio_runnable(&node);
 		cio_resume(target, value);
 	}
+
+	cio_tracef("%s: free runnable %p", __func__, &node);
 }

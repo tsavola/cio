@@ -12,6 +12,7 @@
 #include "atomic-internal.h"
 #include "list-internal.h"
 #include "sched.h"
+#include "trace.h"
 
 struct cio_channel {
 	int refs;
@@ -61,9 +62,13 @@ static void cio_channel_wait(struct cio_list *list, void *item)
 	struct cio_context context;
 	struct cio_channel_wait node;
 
+	cio_tracef("%s: alloc context %p", __func__, &context);
+
 	cio_channel_wait_append(list, &node, -1, item, &context);
 	cio_yield(&context);
 	cio_channel_wait_remove_head(list);
+
+	cio_tracef("%s: free context %p", __func__, &context);
 }
 
 static struct cio_list *cio_channel_wait_list(const struct cio_channel_op *op)
@@ -208,6 +213,8 @@ int cio_channel_select(const struct cio_channel_op *ops, unsigned int nops)
 	struct cio_context context;
 	struct cio_channel_wait nodes[nops];
 
+	cio_tracef("%s: alloc context %p", __func__, &context);
+
 	for (int i = 0; i < nops; i++) {
 		const struct cio_channel_op *op = ops + i;
 		cio_channel_wait_append(cio_channel_wait_list(op), nodes + i, i + 1, op->item, &context);
@@ -219,6 +226,8 @@ int cio_channel_select(const struct cio_channel_op *ops, unsigned int nops)
 		const struct cio_channel_op *op = ops + i;
 		cio_channel_wait_remove_head(cio_channel_wait_list(op));
 	}
+
+	cio_tracef("%s: free context %p", __func__, &context);
 
 	return index;
 }
