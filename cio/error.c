@@ -31,6 +31,10 @@ void cio_error(const char *format, ...)
  */
 void CIO_NORETURN cio_abort(const char *message, int error)
 {
-	cio_error("%s: %s", message, strerror(error));
+	if (error)
+		cio_error("%s: %s", message, strerror(error));
+	else
+		cio_error("%s", message);
+
 	abort();
 }
