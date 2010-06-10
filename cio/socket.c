@@ -127,3 +127,5 @@ int cio_accept4(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags
 
 	return fd;
 }
+
+/* cio_recv() and cio_send() are implemented in io.c */

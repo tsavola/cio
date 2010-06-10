@@ -3,10 +3,12 @@
  */
 
 #include "io.h"
+#include "socket.h"
 
 #include <errno.h>
-#include <stdbool.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/sendfile.h>
 #include <unistd.h>
 
@@ -16,6 +18,8 @@
 enum cio_io_type {
 	CIO_IO_READ,
 	CIO_IO_WRITE,
+	CIO_IO_RECV,
+	CIO_IO_SEND,
 	CIO_IO_SENDFILE,
 };
 
@@ -23,13 +27,13 @@ enum cio_io_type {
  * @param event     CIO_INPUT or CIO_OUTPUT
  * @param type      I/O call to make
  * @param fd        primary file descriptor
- * @param extra_fd  secondary file descriptor (unused by read and write)
- * @param buf       buffer to read from or write to (unused by sendfile)
- * @param offset    source file offset (must be NULL for read and write)
+ * @param extra_fd  secondary file descriptor (used by sendfile)
+ * @param buf       buffer to read from or write to (not used by sendfile)
+ * @param offset    source file offset (used by sendfile)
  * @param count     number of bytes to transfer
- * @param full      try to transfer only some bytes or as much as possible?
+ * @param flags     (used by recv/send)
  */
-static ssize_t cio_io(int event, enum cio_io_type type, int fd, int extra_fd, void *buf, off_t *offset, size_t count, bool full)
+static ssize_t cio_io(int event, enum cio_io_type type, int fd, int extra_fd, void *buf, off_t *offset, size_t count, int flags)
 {
 	struct cio_context context;
 	ssize_t len = -1;
@@ -53,13 +57,21 @@ static ssize_t cio_io(int event, enum cio_io_type type, int fd, int extra_fd, vo
 			ret = write(fd, buf + len, count - len);
 			break;
 
+		case CIO_IO_RECV:
+			ret = recv(fd, buf + len, count - len, flags & ~MSG_WAITALL);
+			break;
+
+		case CIO_IO_SEND:
+			ret = send(fd, buf + len, count - len, flags & ~MSG_WAITALL);
+			break;
+
 		case CIO_IO_SENDFILE:
 			ret = sendfile(fd, extra_fd, offset, count - len);
 			break;
 		}
 
 		if (ret < 0) {
-			if ((errno == EAGAIN || errno == EINTR) && (full || len == 0)) {
+			if ((errno == EAGAIN || errno == EINTR) && ((flags & MSG_WAITALL) || len == 0)) {
 				cio_yield(&context);
 				continue;
 			}
@@ -92,7 +104,7 @@ fail:
 }
 
 /**
- * Read one or more bytes from a file descriptor.
+ * Read from a file descriptor.
  *
  * @param fd       file descriptor
  * @param buf      buffer
@@ -108,40 +120,18 @@ fail:
  */
 ssize_t cio_read(int fd, void *buf, size_t bufsize)
 {
-	return cio_io(CIO_INPUT, CIO_IO_READ, fd, -1, buf, NULL, bufsize, false);
+	return cio_io(CIO_INPUT, CIO_IO_READ, fd, -1, buf, NULL, bufsize, 0);
 }
 
 /**
- * Read all requested bytes from a file descriptor.
+ * Write to a file descriptor.
  *
  * @param fd       file descriptor
  * @param buf      buffer
- * @param bufsize  number of bytes to read
+ * @param bufsize  maximum number of bytes to write
  *
- * @retval >0 the number of bytes read; may be less than @p bufsize due to
- *            end-of-file or error
- * @retval 0 on end-of-file before anything could be read
- * @retval -1 on error with @c errno set
- *
- * @pre @p fd should be in non-blocking mode
- *
- * @see @c read(2)
- */
-ssize_t cio_read_full(int fd, void *buf, size_t bufsize)
-{
-	return cio_io(CIO_INPUT, CIO_IO_READ, fd, -1, buf, NULL, bufsize, true);
-}
-
-/**
- * Write all bytes to a file descriptor.
- *
- * @param fd       file descriptor
- * @param buf      buffer
- * @param bufsize  number of bytes to write
- *
- * @retval >0 the number of bytes written; may be less than @p bufsize due to
- *            end-of-file or error
- * @retval 0 on end-of-file before anything could be written
+ * @retval >0 the number of bytes written
+ * @retval 0 on end-of-file
  * @retval -1 on error with @c errno set
  *
  * @pre @p fd should be in non-blocking mode
@@ -150,7 +140,23 @@ ssize_t cio_read_full(int fd, void *buf, size_t bufsize)
  */
 ssize_t cio_write(int fd, const void *buf, size_t bufsize)
 {
-	return cio_io(CIO_OUTPUT, CIO_IO_WRITE, fd, -1, (void *) buf, NULL, bufsize, true);
+	return cio_io(CIO_OUTPUT, CIO_IO_WRITE, fd, -1, (void *) buf, NULL, bufsize, 0);
+}
+
+/**
+ * TODO
+ */
+ssize_t cio_recv(int sockfd, void *buf, size_t len, int flags)
+{
+	return cio_io(CIO_INPUT, CIO_IO_READ, sockfd, -1, buf, NULL, len, flags);
+}
+
+/**
+ * TODO
+ */
+ssize_t cio_send(int sockfd, const void *buf, size_t len, int flags)
+{
+	return cio_io(CIO_OUTPUT, CIO_IO_WRITE, sockfd, -1, (void *) buf, NULL, len, flags);
 }
 
 /**
@@ -160,7 +166,7 @@ ssize_t cio_write(int fd, const void *buf, size_t bufsize)
  * @param out_fd  target file descriptor
  * @param in_fd   source file descriptor
  * @param offset  pointer to file offset or @c NULL
- * @param count   number of bytes to transfer
+ * @param count   maximum number of bytes to transfer
  *
  * @retval >=0 the number of bytes transferred
  * @retval -1 on error with @c errno set
@@ -177,5 +183,5 @@ ssize_t cio_write(int fd, const void *buf, size_t bufsize)
  */
 ssize_t cio_sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
 {
-	return cio_io(CIO_OUTPUT, CIO_IO_SENDFILE, out_fd, in_fd, NULL, offset, count, true);
+	return cio_io(CIO_OUTPUT, CIO_IO_SENDFILE, out_fd, in_fd, NULL, offset, count, 0);
 }
