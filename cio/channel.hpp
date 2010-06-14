@@ -62,9 +62,26 @@ public:
 	/**
 	 * TODO
 	 */
+	int read(T &item) throw ()
+	{
+		return cio_channel_read(c, reinterpret_cast<void *> (&item), sizeof (T));
+	}
+
+	/**
+	 * TODO
+	 */
+	int write(const T &item) throw ()
+	{
+		return cio_channel_write(c, reinterpret_cast<const void *> (&item), sizeof (T));
+	}
+
+	/**
+	 * TODO
+	 */
 	channel &operator>>(T &item) throw ()
 	{
-		cio_channel_read(c, reinterpret_cast<void *> (&item), sizeof (T));
+		int ret = read(item);
+		assert(ret == 1);
 		return *this;
 	}
 
@@ -73,7 +90,8 @@ public:
 	 */
 	channel &operator<<(const T &item) throw ()
 	{
-		cio_channel_write(c, reinterpret_cast<const void *> (&item), sizeof (T));
+		int ret = write(item);
+		assert(ret == 1);
 		return *this;
 	}
 

@@ -29,41 +29,38 @@ int cio_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
 	int ret;
 
-	do {
-		ret = connect(sockfd, addr, addrlen);
-	} while (ret < 0 && errno == EINTR);
+	ret = connect(sockfd, addr, addrlen);
 
 	if (ret < 0 && errno == EINPROGRESS) {
 		struct cio_context context;
-		int err;
 
 		if (cio_register(sockfd, CIO_OUTPUT, &context) < 0)
 			return -1;
 
 		while (true) {
-			cio_yield(&context);
-
-			socklen_t len = sizeof (ret);
-			if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-				err = errno;
-				ret = -1;
+			ret = cio_yield(&context);
+			if (ret < 0)
 				break;
-			}
 
-			if (ret < 0) {
-				if (errno == EALREADY || errno == EINTR)
-					continue;
+			int error = 0;
+			socklen_t errorlen = sizeof (error);
 
-				err = errno;
+			ret = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &errorlen);
+			if (ret < 0)
+				break;
+
+			if (error == EALREADY)
+				continue;
+
+			if (error) {
+				ret = -1;
+				errno = error;
 			}
 
 			break;
 		}
 
 		cio_unregister(sockfd);
-
-		if (ret < 0)
-			errno = err;
 	}
 
 	return ret;
@@ -99,33 +96,26 @@ int cio_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 int cio_accept4(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags)
 {
 	struct cio_context context;
-	int fd;
-	int err;
+	int ret;
 
 	if (cio_register(sockfd, CIO_INPUT, &context) < 0)
 		return -1;
 
 	while (true) {
-		cio_yield(&context);
+		ret = cio_yield(&context);
+		if (ret < 0)
+			break;
 
-		fd = accept4(sockfd, addr, addrlen, flags);
-
-		if (fd < 0) {
-			if (errno == EAGAIN || errno == EINTR)
-				continue;
-
-			err = errno;
-		}
+		ret = accept4(sockfd, addr, addrlen, flags);
+		if (ret < 0 && errno == EAGAIN)
+			continue;
 
 		break;
 	}
 
 	cio_unregister(sockfd);
 
-	if (fd < 0)
-		errno = err;
-
-	return fd;
+	return ret;
 }
 
 /* cio_recv() and cio_send() are implemented in io.c */

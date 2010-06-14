@@ -57,18 +57,21 @@ static void cio_channel_wait_remove_head(struct cio_list *list)
 	cio_list_remove_head(struct cio_channel_wait, list);
 }
 
-static void cio_channel_wait(struct cio_list *list, void *item)
+static int cio_channel_wait(struct cio_list *list, void *item)
 {
 	struct cio_context context;
 	struct cio_channel_wait node;
+	int ret;
 
 	cio_tracef("%s: alloc context %p", __func__, &context);
 
-	cio_channel_wait_append(list, &node, -1, item, &context);
-	cio_yield(&context);
+	cio_channel_wait_append(list, &node, 1, item, &context);
+	ret = cio_yield(&context);
 	cio_channel_wait_remove_head(list);
 
 	cio_tracef("%s: free context %p", __func__, &context);
+
+	return ret;
 }
 
 static struct cio_list *cio_channel_wait_list(const struct cio_channel_op *op)
@@ -134,7 +137,7 @@ size_t cio_channel_item_size(const struct cio_channel *c)
  * @param item_size  must match the channel's item size
  *
  * @retval 1 on success
- * @retval -1 if item_size is invalid
+ * @retval -1 on error with @c errno set
  */
 int cio_channel_read(struct cio_channel *c, void *item, size_t item_size)
 {
@@ -146,7 +149,8 @@ int cio_channel_read(struct cio_channel *c, void *item, size_t item_size)
 		memcpy(item, write->item, item_size);
 		cio_run(write->context, write->id);
 	} else {
-		cio_channel_wait(&c->read_list, item);
+		if (cio_channel_wait(&c->read_list, item) < 0)
+			return -1;
 	}
 
 	return 1;
@@ -160,7 +164,7 @@ int cio_channel_read(struct cio_channel *c, void *item, size_t item_size)
  * @param item_size  must match the channel's item size
  *
  * @retval 1 on success
- * @retval -1 if item_size is invalid
+ * @retval -1 on error with @c errno set
  */
 int cio_channel_write(struct cio_channel *c, const void *item, size_t item_size)
 {
@@ -172,7 +176,8 @@ int cio_channel_write(struct cio_channel *c, const void *item, size_t item_size)
 		memcpy(read->item, item, item_size);
 		cio_run(read->context, read->id);
 	} else {
-		cio_channel_wait(&c->write_list, (void *) item);
+		if (cio_channel_wait(&c->write_list, (void *) item) < 0)
+			return -1;
 	}
 
 	return 1;
@@ -185,7 +190,7 @@ int cio_channel_write(struct cio_channel *c, const void *item, size_t item_size)
  * @param nops  number of operations
  *
  * @retval >=0 is the index of the performed operation
- * @retval -1 if item_size of an operation is invalid
+ * @retval -1 on error with @c errno set
  */
 int cio_channel_select(const struct cio_channel_op *ops, unsigned int nops)
 {
@@ -220,7 +225,7 @@ int cio_channel_select(const struct cio_channel_op *ops, unsigned int nops)
 		cio_channel_wait_append(cio_channel_wait_list(op), nodes + i, i + 1, op->item, &context);
 	}
 
-	int index = cio_yield(&context) - 1;
+	int ret = cio_yield(&context);
 
 	for (int i = 0; i < nops; i++) {
 		const struct cio_channel_op *op = ops + i;
@@ -229,5 +234,8 @@ int cio_channel_select(const struct cio_channel_op *ops, unsigned int nops)
 
 	cio_tracef("%s: free context %p", __func__, &context);
 
-	return index;
+	if (ret > 0)
+		ret--;
+
+	return ret;
 }

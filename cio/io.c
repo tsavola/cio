@@ -37,15 +37,15 @@ static ssize_t cio_io(int event, enum cio_io_type type, int fd, int extra_fd, vo
 {
 	struct cio_context context;
 	ssize_t len = -1;
-	int err;
 	ssize_t ret;
 
 	cio_tracef("%s: alloc context %p", __func__, &context);
 
 	if (cio_register(fd, event, &context) < 0)
-		goto fail;
+		goto no_register;
 
-	cio_yield(&context);
+	if (cio_yield(&context) < 0)
+		goto no_yield;
 
 	for (len = 0; len < count; ) {
 		switch (type) {
@@ -71,15 +71,14 @@ static ssize_t cio_io(int event, enum cio_io_type type, int fd, int extra_fd, vo
 		}
 
 		if (ret < 0) {
-			if ((errno == EAGAIN || errno == EINTR) && ((flags & MSG_WAITALL) || len == 0)) {
-				cio_yield(&context);
-				continue;
+			if (errno == EAGAIN && ((flags & MSG_WAITALL) || len == 0)) {
+				if (cio_yield(&context) >= 0)
+					continue;
 			}
 
-			if (len == 0) {
+			if (len == 0)
 				len = -1;
-				err = errno;
-			}
+
 			break;
 		}
 
@@ -92,12 +91,10 @@ static ssize_t cio_io(int event, enum cio_io_type type, int fd, int extra_fd, vo
 		len += ret;
 	}
 
+no_yield:
 	cio_unregister(fd);
 
-	if (len < 0)
-		errno = err;
-
-fail:
+no_register:
 	cio_tracef("%s: free context %p", __func__, &context);
 
 	return len;

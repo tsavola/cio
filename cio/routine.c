@@ -6,6 +6,7 @@
 #include "routine.h"
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +16,7 @@
 #include <sys/mman.h>
 
 #include "error-internal.h"
+#include "error.h"
 #include "sched-internal.h"
 #include "trace.h"
 
@@ -145,7 +147,12 @@ void cio_launch_cancel(void *arg)
  */
 void CIO_NORETURN cio_launch_exit(void *arg)
 {
-	cio_sched(arg);
+	while (true) {
+		cio_sched(arg);
+
+		/* TODO: this should be avoided by scheduling a waiting routine */
+		cio_error("Warning: EINTR ignored");
+	}
 }
 
 void CIO_INTERNAL cio_cleanup(void *arg)

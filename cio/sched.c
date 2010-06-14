@@ -5,6 +5,7 @@
 #include "sched-internal.h"
 #include "sched.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -25,9 +26,6 @@ static struct cio_list cio_runnable_list;
 
 static void CIO_NORETURN cio_resume(struct cio_context *target, int value, void *cleanup)
 {
-	if (value == 0)
-		value = 1;
-
 	target->value = value;
 	target->cleanup = cleanup;
 
@@ -76,13 +74,18 @@ static void cio_sched_runnable(void *cleanup)
 	}
 }
 
-static void CIO_NORETURN cio_sched_event(void *cleanup)
+static void cio_sched_event(void *cleanup)
 {
 	struct epoll_event event;
 
-	while (epoll_wait(cio_event_fd, &event, 1, -1) < 0)
-		if (errno != EINTR)
-			cio_abort("Unexpected error while waiting for events", errno);
+	if (epoll_wait(cio_event_fd, &event, 1, -1) < 0) {
+		if (errno == EINTR) {
+			cio_tracef("%s: interrupted", __func__);
+			return;
+		}
+
+		cio_abort("Unexpected error while waiting for events", errno);
+	}
 
 	cio_tracef("%s: resume context %p", __func__, event.data.ptr);
 
@@ -94,7 +97,7 @@ static void CIO_NORETURN cio_sched_event(void *cleanup)
  *
  * @internal
  */
-void CIO_INTERNAL CIO_NORETURN cio_sched(void *cleanup)
+void CIO_INTERNAL cio_sched(void *cleanup)
 {
 	cio_sched_runnable(cleanup);
 	cio_sched_event(cleanup);
@@ -137,13 +140,17 @@ int cio_register(int fd, int events, struct cio_context *target)
 }
 
 /**
- * Unsubscribe to the I/O events.
+ * Unsubscribe to the I/O events.  (Preserves the value of @c errno.)
  *
  * @param fd  a file descriptor which was previously registered
  */
 void cio_unregister(int fd)
 {
+	int saved_errno = errno;
+
 	epoll_ctl(cio_event_fd, EPOLL_CTL_DEL, fd, NULL);
+
+	errno = saved_errno;
 }
 
 /**
@@ -158,6 +165,7 @@ void cio_unregister(int fd)
  *         #CIO_HANGUP) which caused the execution to resume if cio_register() was
  *         used; or
  * @return the value passed to cio_run() if it was used
+ * @retval -1 on interrupt with @c errno set
  */
 int cio_yield(struct cio_context *storage)
 {
@@ -165,8 +173,13 @@ int cio_yield(struct cio_context *storage)
 
 	int ret = cio_save(storage);
 
-	if (ret == 0)
+	if (ret == 0) {
 		cio_sched(NULL);
+
+		cio_tracef("%s: resume context %p", __func__, storage);
+
+		return -1;
+	}
 
 	return ret;
 }
@@ -176,10 +189,12 @@ int cio_yield(struct cio_context *storage)
  *
  * @param target  execution context to be resumed
  * @param value to be returned by the cio_yield() call in the target routine
- *        (must be non-zero)
+ *        (must be greater than zero)
  */
 void cio_run(struct cio_context *target, int value)
 {
+	assert(value > 0);
+
 	struct cio_runnable node;
 
 	cio_tracef("%s: alloc runnable %p", __func__, &node);

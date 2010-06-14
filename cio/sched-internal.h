@@ -53,6 +53,6 @@ struct cio_runnable {
 	})
 
 void CIO_INTERNAL cio_runnable(struct cio_runnable *node);
-void CIO_INTERNAL CIO_NORETURN cio_sched(void *cleanup);
+void CIO_INTERNAL cio_sched(void *cleanup);
 
 #endif
