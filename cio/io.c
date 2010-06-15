@@ -2,6 +2,7 @@
  * Copyright (c) 2010  Timo Savola
  */
 
+#include "io-internal.h"
 #include "io.h"
 #include "socket.h"
 
@@ -14,14 +15,6 @@
 
 #include "sched.h"
 #include "trace.h"
-
-enum cio_io_type {
-	CIO_IO_READ,
-	CIO_IO_WRITE,
-	CIO_IO_RECV,
-	CIO_IO_SEND,
-	CIO_IO_SENDFILE,
-};
 
 /**
  * @param event     CIO_INPUT or CIO_OUTPUT
