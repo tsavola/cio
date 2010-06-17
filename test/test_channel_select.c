@@ -67,7 +67,9 @@ void test_channel_select(void)
 			op->item_size = sizeof (int);
 		}
 
-		int selected = cio_channel_select(ops, count);
+		int selected;
+		int ret = cio_channel_select(ops, count, &selected);
+		assert(ret == 1);
 		assert(selected >= 0);
 		assert(selected < count);
 

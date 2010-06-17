@@ -5,6 +5,7 @@
 #include "channel.h"
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +18,7 @@
 struct cio_channel {
 	int refs;
 	size_t item_size;
+	bool closed;
 	struct cio_list read_list;
 	struct cio_list write_list;
 };
@@ -25,6 +27,7 @@ struct cio_channel_wait {
 	int id;
 	void *item;
 	struct cio_context *context;
+	bool closed;
 	struct cio_channel_wait *next;
 };
 
@@ -43,6 +46,7 @@ static void cio_channel_wait_append(struct cio_list *list, struct cio_channel_wa
 	node->id = id;
 	node->item = item;
 	node->context = context;
+	node->closed = false;
 
 	cio_list_append(struct cio_channel_wait, list, node);
 }
@@ -71,7 +75,13 @@ static int cio_channel_wait(struct cio_list *list, void *item)
 
 	cio_tracef("%s: free context %p", __func__, &context);
 
-	return ret;
+	if (ret < 0)
+		return -1;
+
+	if (node.closed)
+		return 0;
+
+	return 1;
 }
 
 static struct cio_list *cio_channel_wait_list(const struct cio_channel_op *op)
@@ -130,6 +140,35 @@ size_t cio_channel_item_size(const struct cio_channel *c)
 }
 
 /**
+ * Mark the channel as closed.  Writing is not possible immediately after this,
+ * and reading is not possible after all pending writes have been completed.
+ * This function may be called multiple times for a single channel.
+ *
+ * @todo be atomic - postpone reader scheduling and return immediately
+ */
+void cio_channel_close(struct cio_channel *c)
+{
+	if (c->closed)
+		return;
+
+	c->closed = true;
+
+	struct cio_list list = c->read_list;
+
+	c->read_list.head = NULL;
+	c->read_list.tail = NULL;
+
+	while (true) {
+		struct cio_channel_wait *read = cio_channel_wait_head(&list);
+		if (read == NULL)
+			break;
+
+		read->closed = true;
+		cio_run(read->context, read->id);
+	}
+}
+
+/**
  * Read an item from the channel.
  *
  * @param c
@@ -137,6 +176,7 @@ size_t cio_channel_item_size(const struct cio_channel *c)
  * @param item_size  must match the channel's item size
  *
  * @retval 1 on success
+ * @retval 0 if the channel is closed
  * @retval -1 on error with @c errno set
  */
 int cio_channel_read(struct cio_channel *c, void *item, size_t item_size)
@@ -148,12 +188,13 @@ int cio_channel_read(struct cio_channel *c, void *item, size_t item_size)
 	if (write) {
 		memcpy(item, write->item, item_size);
 		cio_run(write->context, write->id);
+		return 1;
 	} else {
-		if (cio_channel_wait(&c->read_list, item) < 0)
-			return -1;
-	}
+		if (c->closed)
+			return 0;
 
-	return 1;
+		return cio_channel_wait(&c->read_list, item);
+	}
 }
 
 /**
@@ -164,6 +205,7 @@ int cio_channel_read(struct cio_channel *c, void *item, size_t item_size)
  * @param item_size  must match the channel's item size
  *
  * @retval 1 on success
+ * @retval 0 if the channel is closed
  * @retval -1 on error with @c errno set
  */
 int cio_channel_write(struct cio_channel *c, const void *item, size_t item_size)
@@ -171,33 +213,39 @@ int cio_channel_write(struct cio_channel *c, const void *item, size_t item_size)
 	if (cio_channel_check(c, item_size) < 0)
 		return -1;
 
+	if (c->closed)
+		return 0;
+
 	struct cio_channel_wait *read = cio_channel_wait_head(&c->read_list);
 	if (read) {
 		memcpy(read->item, item, item_size);
 		cio_run(read->context, read->id);
+		return 1;
 	} else {
-		if (cio_channel_wait(&c->write_list, (void *) item) < 0)
-			return -1;
+		return cio_channel_wait(&c->write_list, (void *) item);
 	}
-
-	return 1;
 }
 
 /**
  * Perform one of multiple read and/or write operations.
  *
- * @param ops   vector of operations
- * @param nops  number of operations
+ * @param      ops        vector of operations
+ * @param      nops       number of operations
+ * @param[out] selection  storage for the index of the selected operation
+ *                        (set also on error; -1 on general error)
  *
- * @retval >=0 is the index of the performed operation
+ * @retval 1 if the selected operation performed
+ * @retval 0 if the selected channel is closed
  * @retval -1 on error with @c errno set
  */
-int cio_channel_select(const struct cio_channel_op *ops, unsigned int nops)
+int cio_channel_select(const struct cio_channel_op *ops, int nops, int *selection)
 {
 	for (int i = 0; i < nops; i++) {
 		const struct cio_channel_op *op = ops + i;
 		struct cio_channel_wait *write = cio_channel_wait_head(&op->channel->write_list);
 		struct cio_channel_wait *read = cio_channel_wait_head(&op->channel->read_list);
+
+		*selection = i;
 
 		if (cio_channel_check(op->channel, op->item_size) < 0)
 			return -1;
@@ -205,13 +253,16 @@ int cio_channel_select(const struct cio_channel_op *ops, unsigned int nops)
 		if (op->type == CIO_CHANNEL_READ && write) {
 			memcpy(op->item, write->item, op->item_size);
 			cio_run(write->context, write->id);
-			return i;
+			return 1;
 		}
+
+		if (op->channel->closed)
+			return 0;
 
 		if (op->type == CIO_CHANNEL_WRITE && read) {
 			memcpy(read->item, op->item, op->item_size);
 			cio_run(read->context, read->id);
-			return i;
+			return 1;
 		}
 	}
 
@@ -227,6 +278,11 @@ int cio_channel_select(const struct cio_channel_op *ops, unsigned int nops)
 
 	int ret = cio_yield(&context);
 
+	if (ret < 0)
+		*selection = -1;
+	else
+		*selection = ret - 1;
+
 	for (int i = 0; i < nops; i++) {
 		const struct cio_channel_op *op = ops + i;
 		cio_channel_wait_remove_head(cio_channel_wait_list(op));
@@ -234,8 +290,11 @@ int cio_channel_select(const struct cio_channel_op *ops, unsigned int nops)
 
 	cio_tracef("%s: free context %p", __func__, &context);
 
-	if (ret > 0)
-		ret--;
+	if (ret < 0)
+		return -1;
 
-	return ret;
+	if (nodes[*selection].closed)
+		return 0;
+
+	return 1;
 }
