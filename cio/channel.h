@@ -67,7 +67,7 @@ size_t cio_channel_item_size(const struct cio_channel *);
 void cio_channel_close(struct cio_channel *);
 int cio_channel_read(struct cio_channel *, void *item, size_t item_size);
 int cio_channel_write(struct cio_channel *, const void *item, size_t item_size);
-int cio_channel_select(const struct cio_channel_op *ops, int nops, int *index_out);
+int cio_channel_select(const struct cio_channel_op *ops, int nops, int *selection);
 
 #ifdef __cplusplus
 }
