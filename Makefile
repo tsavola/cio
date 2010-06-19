@@ -4,10 +4,12 @@ CXXFLAGS	+= -std=c++0x
 
 LIBRARIES	:= cio
 BINARIES	:= httpd
+OTHERS		:= python
 TESTS		:= test
 
-build: $(LIBRARIES) $(BINARIES)
+build: $(LIBRARIES)
 cio: cio-static cio-shared
+python: cio-shared
 httpd: cio-shared
 test: cio-static
 
@@ -16,7 +18,7 @@ include build/project.mk
 CTAGS		:= ctags-exuberant
 ETAGS		:= $(CTAGS) -e
 
-SRCDIRS		:= $(LIBRARIES) $(BINARIES) $(TESTS) python
+SRCDIRS		:= $(LIBRARIES) $(BINARIES) $(TESTS)
 SOURCES		:= $(shell find $(SRCDIRS) -name '*.[chS]' -o -name '*.[ch]pp')
 
 ctags:: tags
