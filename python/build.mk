@@ -1,8 +1,7 @@
-PYTHON		?= python3
+include python/common.mk
+
 PYTHONNAME	?= $(notdir $(shell readlink -f $(shell which $(PYTHON))))
 PYTHONDIR	?= $(PREFIX)/lib/$(PYTHONNAME)/site-packages
-
-include build/common.mk
 
 O_NAME		:= $(O)/lib/python/_cio.so
 DEST_PYTHONDIR	:= $(DESTDIR)$(PYTHONDIR)

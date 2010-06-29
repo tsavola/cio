@@ -5,8 +5,6 @@
 __all__ = [
 	"launch",
 
-	"channel",
-
 	"read",
 	"write",
 
@@ -30,8 +28,6 @@ def launch(routine, *args):
 		callable = routine
 
 	_cio.launch(callable)
-
-channel = _cio.channel
 
 def read(fd, buf, size=None):
 	if size is None:

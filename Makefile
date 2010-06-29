@@ -5,13 +5,14 @@ CXXFLAGS	+= -std=c++0x
 LIBRARIES	:= cio
 BINARIES	:= httpd
 OTHERS		:= python
-TESTS		:= test
+TESTS		:= test python/test
 
 build: $(LIBRARIES)
 cio: cio-static cio-shared
-python: cio-shared
-httpd: cio-shared
 test: cio-static
+python: cio-shared
+python/test: python
+httpd: cio-shared
 
 include build/project.mk
 
