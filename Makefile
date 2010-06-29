@@ -18,7 +18,7 @@ include build/project.mk
 CTAGS		:= ctags-exuberant
 ETAGS		:= $(CTAGS) -e
 
-SRCDIRS		:= $(LIBRARIES) $(BINARIES) $(TESTS)
+SRCDIRS		:= $(LIBRARIES) $(BINARIES) $(OTHERS) $(TESTS)
 SOURCES		:= $(shell find $(SRCDIRS) -name '*.[chS]' -o -name '*.[ch]pp')
 
 ctags:: tags
