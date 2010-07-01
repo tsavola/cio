@@ -9,11 +9,14 @@
 #include <stddef.h>
 
 #include "cio/routine.h"
+#include "cio/trace.h"
 
 #include "thread.h"
 
 static void py_cio_routine_main(void *arg)
 {
+	cio_tracef("%s: enter", __func__);
+
 	PyObject *callable = *(PyObject **) arg;
 	PyObject *result;
 
@@ -27,10 +30,14 @@ static void py_cio_routine_main(void *arg)
 	Py_DECREF(callable);
 
 	py_cio_thread_save();
+
+	cio_tracef("%s: leave", __func__);
 }
 
 PyObject *py_cio_routine(PyObject *self, PyObject *args)
 {
+	cio_trace(__func__);
+
 	PyObject *callable;
 	int ret;
 

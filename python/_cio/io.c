@@ -14,6 +14,7 @@
 #include "cio/io-internal.h"
 #include "cio/io.h"
 #include "cio/socket.h"
+#include "cio/trace.h"
 
 #include "thread.h"
 
@@ -71,20 +72,28 @@ static PyObject *py_cio_io(enum cio_io_type type, PyObject *args, const char *fo
 
 PyObject *py_cio_read(PyObject *self, PyObject *args)
 {
+	cio_trace(__func__);
+
 	return py_cio_io(CIO_IO_READ, args, "iw*n:read");
 }
 
 PyObject *py_cio_write(PyObject *self, PyObject *args)
 {
+	cio_trace(__func__);
+
 	return py_cio_io(CIO_IO_WRITE, args, "is*n:write");
 }
 
 PyObject *py_cio_recv(PyObject *self, PyObject *args)
 {
+	cio_trace(__func__);
+
 	return py_cio_io(CIO_IO_RECV, args, "iw*ni:recv");
 }
 
 PyObject *py_cio_send(PyObject *self, PyObject *args)
 {
+	cio_trace(__func__);
+
 	return py_cio_io(CIO_IO_SEND, args, "is*ni:send");
 }

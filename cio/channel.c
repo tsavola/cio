@@ -101,6 +101,8 @@ static struct cio_list *cio_channel_wait_list(const struct cio_channel_op *op)
  */
 struct cio_channel *cio_channel_create(size_t item_size)
 {
+	cio_trace(__func__);
+
 	struct cio_channel *c = calloc(1, sizeof (struct cio_channel));
 	if (c == NULL)
 		return NULL;
@@ -120,6 +122,8 @@ struct cio_channel *cio_channel_create(size_t item_size)
  */
 struct cio_channel *cio_channel_ref(struct cio_channel *c)
 {
+	cio_trace(__func__);
+
 	cio_increment(&c->refs);
 	return c;
 }
@@ -130,6 +134,8 @@ struct cio_channel *cio_channel_ref(struct cio_channel *c)
  */
 void cio_channel_unref(struct cio_channel *c)
 {
+	cio_trace(__func__);
+
 	if (cio_decrement(&c->refs) == 0)
 		free(c);
 }
@@ -148,6 +154,8 @@ size_t cio_channel_item_size(const struct cio_channel *c)
  */
 void cio_channel_close(struct cio_channel *c)
 {
+	cio_trace(__func__);
+
 	if (c->closed)
 		return;
 
@@ -181,6 +189,8 @@ void cio_channel_close(struct cio_channel *c)
  */
 int cio_channel_read(struct cio_channel *c, void *item, size_t item_size)
 {
+	cio_trace(__func__);
+
 	if (cio_channel_check(c, item_size) < 0)
 		return -1;
 
@@ -210,6 +220,8 @@ int cio_channel_read(struct cio_channel *c, void *item, size_t item_size)
  */
 int cio_channel_write(struct cio_channel *c, const void *item, size_t item_size)
 {
+	cio_trace(__func__);
+
 	if (cio_channel_check(c, item_size) < 0)
 		return -1;
 
@@ -240,6 +252,8 @@ int cio_channel_write(struct cio_channel *c, const void *item, size_t item_size)
  */
 int cio_channel_select(const struct cio_channel_op *ops, int nops, int *selection)
 {
+	cio_trace(__func__);
+
 	for (int i = 0; i < nops; i++) {
 		const struct cio_channel_op *op = ops + i;
 		struct cio_channel_wait *write = cio_channel_wait_head(&op->channel->write_list);
