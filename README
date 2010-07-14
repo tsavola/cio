@@ -1,6 +1,5 @@
 /**
-@mainpage Cooperative I/O routines
-
+@mainpage  Cooperative I/O routines
 
 CIO is a C library for I/O-driven cooperative multitasking that tries to
 abstract away the event loop.  Applications are partitioned into multiple
@@ -12,7 +11,7 @@ concepts like Communicating Sequential Processes, Continuations and Coroutines.
 Tested on Linux/x86-64.  The scheduler doesn't know multithreading yet.
 
 
-@par API documentation
+@par  API documentation
 
 - Low-level @link sched scheduling API @endlink
 - @link routine Routine @endlink management ( @link routine_cpp C++ @endlink )
@@ -23,12 +22,17 @@ Tested on Linux/x86-64.  The scheduler doesn't know multithreading yet.
 - @link util Utilities @endlink
 
 
-@par Source code
+@par  Source code
 
 Git repository: @c http://github.com/tsavola/cio
 
 
-@par Author
+@par  Bugs
+
+Issue tracker: @c http://github.com/tsavola/cio/issues
+
+
+@par  Attribution
 
 Copyright © 2010 Timo Savola <timo.savola@iki.fi>
 
