@@ -88,9 +88,11 @@ int cio_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 /**
  * Accept a connection on a socket.
  *
+ * @param sockfd   socket file descriptor
+ * @param addr     buffer for socket address or @c NULL
+ * @param addrlen  size of the address buffer or @c NULL
  * @param flags  for the new file descriptor
  *
- * @see cio_accept()
  * @see @c accept4(2)
  */
 int cio_accept4(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags)

@@ -5,12 +5,6 @@
 #ifndef CIO_CHANNEL_HPP
 #define CIO_CHANNEL_HPP
 
-/**
- * @defgroup channel_cpp Channel (C++)
- * @code #include <cio/channel.hpp> @endcode
- * @{
- */
-
 #include "channel.h"
 
 #include <cassert>
@@ -19,14 +13,20 @@
 namespace cio {
 
 /**
- * TODO
+ * @defgroup channel_cpp Channel (C++)
+ * @code #include <cio/channel.hpp> @endcode
+ * @{
  */
+
 template <typename T>
 class channel
 {
 	struct cio_channel *c;
 
 public:
+	/**
+	 * Create a new channel.
+	 */
 	channel() throw (std::bad_alloc) : c(cio_channel_create(sizeof (T)))
 	{
 		if (!c)
@@ -34,23 +34,34 @@ public:
 	}
 
 	/**
-	 * TODO
+	 * Steal a reference to a C channel object.
+	 *
+	 * @pre Item size of @p c_ptr must match @b T
 	 */
 	explicit channel(struct cio_channel *c_ptr) throw () : c(c_ptr)
 	{
-		assert(cio_channel_item_size(c) == sizeof (T));
+		assert(cio_channel_item_size(c_ptr) == sizeof (T));
 	}
 
+	/**
+	 * Reference an existing channel.
+	 */
 	channel(channel &other) throw () : c(other.c)
 	{
 		cio_channel_ref(c);
 	}
 
+	/**
+	 * Unreference the channel.
+	 */
 	~channel() throw ()
 	{
 		cio_channel_unref(c);
 	}
 
+	/**
+	 * Drop the existing reference and reference another channel.
+	 */
 	channel &operator=(channel &other) throw ()
 	{
 		cio_channel_unref(c);
@@ -60,7 +71,7 @@ public:
 	}
 
 	/**
-	 * TODO
+	 * @see cio_read
 	 */
 	int read(T &item) throw ()
 	{
@@ -68,7 +79,7 @@ public:
 	}
 
 	/**
-	 * TODO
+	 * @see cio_write
 	 */
 	int write(const T &item) throw ()
 	{
@@ -76,7 +87,7 @@ public:
 	}
 
 	/**
-	 * TODO
+	 * @see channel::read(T &)
 	 */
 	channel &operator>>(T &item) throw ()
 	{
@@ -86,7 +97,7 @@ public:
 	}
 
 	/**
-	 * TODO
+	 * @see channel::write(const T &)
 	 */
 	channel &operator<<(const T &item) throw ()
 	{
@@ -96,7 +107,7 @@ public:
 	}
 
 	/**
-	 * TODO
+	 * @return a shared reference to the C channel object
 	 */
 	struct cio_channel *c_ptr() throw ()
 	{
@@ -104,8 +115,8 @@ public:
 	}
 };
 
-} // namespace cio
-
 /** @} */
+
+} // namespace cio
 
 #endif
