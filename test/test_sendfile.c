@@ -69,7 +69,7 @@ void test_sendfile(void)
 		.size = file_stat.st_size,
 	};
 
-	cio_launch(receiver, &args, sizeof (args));
+	cio_routine(receiver, &args, sizeof (args));
 
 	printf("sendfile\n");
 

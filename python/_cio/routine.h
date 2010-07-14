@@ -9,6 +9,6 @@
 
 #include "cio/attr.h"
 
-PyObject *py_cio_launch(PyObject *, PyObject *) CIO_INTERNAL;
+PyObject *py_cio_routine(PyObject *, PyObject *) CIO_INTERNAL;
 
 #endif

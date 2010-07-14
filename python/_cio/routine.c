@@ -12,7 +12,7 @@
 
 #include "thread.h"
 
-static void py_cio_routine(void *arg)
+static void py_cio_routine_main(void *arg)
 {
 	PyObject *callable = *(PyObject **) arg;
 	PyObject *result;
@@ -29,12 +29,12 @@ static void py_cio_routine(void *arg)
 	py_cio_thread_save();
 }
 
-PyObject *py_cio_launch(PyObject *self, PyObject *args)
+PyObject *py_cio_routine(PyObject *self, PyObject *args)
 {
 	PyObject *callable;
 	int ret;
 
-	if (!PyArg_ParseTuple(args, "O:launch", &callable))
+	if (!PyArg_ParseTuple(args, "O:routine", &callable))
 		return NULL;
 
 	if (!PyCallable_Check(callable)) {
@@ -45,7 +45,7 @@ PyObject *py_cio_launch(PyObject *self, PyObject *args)
 	Py_INCREF(callable);
 
 	py_cio_thread_save();
-	ret = cio_launch(py_cio_routine, &callable, sizeof (PyObject *));
+	ret = cio_routine(py_cio_routine_main, &callable, sizeof (PyObject *));
 	py_cio_thread_restore();
 
 	if (ret < 0) {

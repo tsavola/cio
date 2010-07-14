@@ -111,8 +111,8 @@ void test_channel(void)
 
 	assert(cio_channel_ref(c) == c);
 
-	cio_launch(routine1, &c, sizeof (c));
-	cio_launch(routine2, &c, sizeof (c));
+	cio_routine(routine1, &c, sizeof (c));
+	cio_routine(routine2, &c, sizeof (c));
 
 	routine0();
 

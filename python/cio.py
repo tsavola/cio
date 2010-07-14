@@ -3,7 +3,7 @@
 #
 
 __all__ = [
-	"launch",
+	"routine",
 
 	"read",
 	"write",
@@ -21,13 +21,13 @@ import os
 
 import _cio
 
-def launch(routine, *args):
+def routine(routine, *args):
 	if args:
 		callable = lambda: routine(*args)
 	else:
 		callable = routine
 
-	_cio.launch(callable)
+	_cio.routine(callable)
 
 def read(fd, buf, size=None):
 	if size is None:

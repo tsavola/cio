@@ -34,8 +34,8 @@ static void launch(void (*routine)(void *), int id, struct cio_channel *exited, 
 		.counter = cio_channel_ref(counter),
 	};
 
-	cio_tracef("%-18s [%4d] cio_launch(%d)", __func__, trace_id, id);
-	assert(cio_launch(routine, &args, sizeof (struct args)) == 0);
+	cio_tracef("%-18s [%4d] cio_routine(%d)", __func__, trace_id, id);
+	assert(cio_routine(routine, &args, sizeof (struct args)) == 0);
 }
 
 static void cleanup(struct args *args)

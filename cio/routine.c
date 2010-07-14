@@ -52,10 +52,10 @@ static void cio_stack_free(void *stack, size_t size)
 	munmap(stack, size);
 }
 
-static void CIO_NORETURN cio_launch_call(void (*func)(void *), void *arg)
+static void CIO_NORETURN cio_routine_call(void (*func)(void *), void *arg)
 {
 	func(arg);
-	cio_launch_exit(arg);
+	cio_routine_exit(arg);
 }
 
 /**
@@ -69,21 +69,21 @@ static void CIO_NORETURN cio_launch_call(void (*func)(void *), void *arg)
  * @retval 0 on success
  * @retval -1 on error with @c errno set
  */
-int cio_launch(void (*func)(void *), const void *arg, size_t argsize)
+int cio_routine(void (*func)(void *), const void *arg, size_t argsize)
 {
-	void *routine_arg = cio_launch_prepare(func, argsize, cio_launch_call);
+	void *routine_arg = cio_routine_prepare(func, argsize, cio_routine_call);
 	if (routine_arg == NULL)
 		return -1;
 
 	memcpy(routine_arg, arg, argsize);
-	cio_launch_finish(routine_arg);
+	cio_routine_finish(routine_arg);
 	return 0;
 }
 
 /**
  * @internal
  */
-void *cio_launch_prepare(void (*func)(void *), size_t argsize, void CIO_NORETURN (*call)(void (*)(void *), void *))
+void *cio_routine_prepare(void (*func)(void *), size_t argsize, void CIO_NORETURN (*call)(void (*)(void *), void *))
 {
 	struct cio_routine *routine = malloc(sizeof (struct cio_routine) + argsize);
 	if (routine == NULL)
@@ -115,7 +115,7 @@ no_routine:
 /**
  * @internal
  */
-void cio_launch_finish(void *arg)
+void cio_routine_finish(void *arg)
 {
 	struct cio_routine *routine = cio_arg_routine(arg);
 	struct cio_runnable node;
@@ -128,7 +128,7 @@ void cio_launch_finish(void *arg)
 		cio_tracef("%s: routine %p", __func__, routine);
 
 		setcontext(&routine->ucontext);
-		cio_abort("Failed to launch routine", errno);
+		cio_abort("Failed to start routine", errno);
 	}
 
 	cio_tracef("%s: free runnable %p", __func__, &node);
@@ -137,7 +137,7 @@ void cio_launch_finish(void *arg)
 /**
  * @internal
  */
-void cio_launch_cancel(void *arg)
+void cio_routine_cancel(void *arg)
 {
 	cio_cleanup(arg);
 }
@@ -145,7 +145,7 @@ void cio_launch_cancel(void *arg)
 /**
  * @internal
  */
-void CIO_NORETURN cio_launch_exit(void *arg)
+void CIO_NORETURN cio_routine_exit(void *arg)
 {
 	while (true) {
 		cio_sched(arg);

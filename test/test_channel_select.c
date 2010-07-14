@@ -49,7 +49,7 @@ void test_channel_select(void)
 		assert(c);
 
 		assert(cio_channel_ref(c) == c);
-		cio_launch(routine, &c, sizeof (c));
+		cio_routine(routine, &c, sizeof (c));
 
 		channels[i] = c;
 	}

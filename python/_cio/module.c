@@ -11,7 +11,7 @@
 #include "socket.h"
 
 static PyMethodDef py_cio_methods[] = {
-	{ "launch", py_cio_launch, METH_VARARGS, NULL },
+	{ "routine", py_cio_routine, METH_VARARGS, NULL },
 
 	{ "read", py_cio_read, METH_VARARGS, NULL },
 	{ "write", py_cio_write, METH_VARARGS, NULL },

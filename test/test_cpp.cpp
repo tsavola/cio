@@ -24,7 +24,7 @@ static void test()
 	cio::channel<int> c;
 
 	for (int i = 0; i < COUNT; i++)
-		cio::launch(routine, c);
+		cio::routine(routine, c);
 
 	for (int i = 0; i < COUNT; i++) {
 		int num;

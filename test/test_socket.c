@@ -103,14 +103,14 @@ void test_socket(void)
 		.common.exit = cio_channel_ref(exit),
 	};
 
-	assert(cio_launch(acceptor, &aargs, sizeof (aargs)) == 0);
+	assert(cio_routine(acceptor, &aargs, sizeof (aargs)) == 0);
 
 	struct connect_args cargs = {
 		.common.info = info,
 		.common.exit = cio_channel_ref(exit),
 	};
 
-	assert(cio_launch(connector, &cargs, sizeof (cargs)) == 0);
+	assert(cio_routine(connector, &cargs, sizeof (cargs)) == 0);
 
 	assert(cio_channel_read(exit, NULL, 0) == 1);
 	assert(cio_channel_read(exit, NULL, 0) == 1);

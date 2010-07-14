@@ -172,7 +172,7 @@ static void listener(int &listen_fd)
 			break;
 		}
 
-		cio::launch(handler, conn_fd);
+		cio::routine(handler, conn_fd);
 	}
 
 	close(listen_fd);
@@ -245,7 +245,7 @@ int main(int argc, char **argv)
 				goto fail;
 			}
 
-			cio::launch(listener, fd);
+			cio::routine(listener, fd);
 
 			listeners++;
 			continue;

@@ -13,7 +13,7 @@ class IO(unittest.TestCase):
 		cio.nonblock(pipe[1])
 
 		for i in range(count):
-			cio.launch(self.writer, os.dup(pipe[1]), i)
+			cio.routine(self.writer, os.dup(pipe[1]), i)
 
 		self.reader(pipe[0], count)
 
@@ -46,7 +46,7 @@ class Socket(unittest.TestCase):
 		listener.listen(socketlib.SOMAXCONN)
 
 		for i in range(count):
-			cio.launch(self.client, address, i)
+			cio.routine(self.client, address, i)
 
 		self.server(listener, 8)
 
@@ -55,7 +55,7 @@ class Socket(unittest.TestCase):
 			socketfd = cio.accept(listener.fileno())
 			print("accept() -> %d" % socketfd)
 
-			cio.launch(self.server_handle, socketfd)
+			cio.routine(self.server_handle, socketfd)
 
 		listener.close()
 

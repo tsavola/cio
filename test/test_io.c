@@ -81,7 +81,7 @@ void test_io(void)
 			.exit_fd = exit_fd[1],
 		};
 
-		assert(cio_launch(reader, &args, sizeof (args)) == 0);
+		assert(cio_routine(reader, &args, sizeof (args)) == 0);
 	}
 
 	writer(io_fd[1]);
