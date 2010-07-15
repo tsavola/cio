@@ -71,6 +71,14 @@ public:
 	}
 
 	/**
+	 * @see cio_channel_close
+	 */
+	void close() throw ()
+	{
+		cio_channel_close(c);
+	}
+
+	/**
 	 * @see cio_read
 	 */
 	int read(T &item) throw ()
