@@ -171,6 +171,8 @@ int cio_yield(struct cio_context *storage)
 {
 	cio_tracef("%s: save context %p", __func__, storage);
 
+	cio_event_init();
+
 	int ret = cio_save(storage);
 
 	if (ret == 0) {
