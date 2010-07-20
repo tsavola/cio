@@ -8,6 +8,7 @@
 #include "channel.h"
 
 #include <cassert>
+#include <cstring>
 #include <stdexcept>
 
 namespace cio {
@@ -81,37 +82,23 @@ public:
 	/**
 	 * @see cio_read
 	 */
-	int read(T &item) throw ()
+	bool read(T &item)
 	{
-		return cio_channel_read(c, reinterpret_cast<void *> (&item), sizeof (T));
+		int ret = cio_channel_read(c, reinterpret_cast<void *> (&item), sizeof (T));
+		if (ret < 0)
+			throw std::runtime_error(std::strerror(errno));
+		return ret != 0;
 	}
 
 	/**
 	 * @see cio_write
 	 */
-	int write(const T &item) throw ()
+	bool write(const T &item)
 	{
-		return cio_channel_write(c, reinterpret_cast<const void *> (&item), sizeof (T));
-	}
-
-	/**
-	 * @see channel::read(T &)
-	 */
-	channel &operator>>(T &item) throw ()
-	{
-		int ret = read(item);
-		assert(ret == 1);
-		return *this;
-	}
-
-	/**
-	 * @see channel::write(const T &)
-	 */
-	channel &operator<<(const T &item) throw ()
-	{
-		int ret = write(item);
-		assert(ret == 1);
-		return *this;
+		int ret = cio_channel_write(c, reinterpret_cast<const void *> (&item), sizeof (T));
+		if (ret < 0)
+			throw std::runtime_error(std::strerror(errno));
+		return ret != 0;
 	}
 
 	/**
@@ -120,6 +107,69 @@ public:
 	struct cio_channel *c_ptr() throw ()
 	{
 		return c;
+	}
+
+	class iterator
+	{
+		friend class channel;
+
+		channel *c;
+		mutable T item;
+
+		explicit iterator(channel *c_) : c(c_)
+		{
+			operator++();
+		}
+
+		iterator() throw () : c(0)
+		{
+		}
+
+	public:
+		T operator*() const throw ()
+		{
+			return item;
+		}
+
+		T &operator->() const throw ()
+		{
+			return item;
+		}
+
+		T &operator++()
+		{
+			if (!c->read(item))
+				c = 0;
+			return item;
+		}
+
+		T operator++(int)
+		{
+			T copy = item;
+			if (!c->read(item))
+				c = 0;
+			return copy;
+		}
+
+		bool operator==(const iterator &other) const throw ()
+		{
+			return !c && !other.c;
+		}
+
+		bool operator!=(const iterator &other) const throw ()
+		{
+			return !operator==(other);
+		}
+	};
+
+	iterator begin()
+	{
+		return iterator(this);
+	}
+
+	iterator end() throw ()
+	{
+		return iterator();
 	}
 };
 
