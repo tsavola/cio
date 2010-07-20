@@ -131,9 +131,9 @@ public:
 			return item;
 		}
 
-		T &operator->() const throw ()
+		T *operator->() const throw ()
 		{
-			return item;
+			return &item;
 		}
 
 		T &operator++()
