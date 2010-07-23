@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 
+#include "channel.h"
 #include "io.h"
 #include "routine.h"
 #include "socket.h"
@@ -34,5 +35,23 @@ static struct PyModuleDef py_cio_module = {
 
 PyMODINIT_FUNC PyInit__cio(void)
 {
-	return PyModule_Create(&py_cio_module);
+	PyObject *module;
+	PyObject *channel;
+
+	module = PyModule_Create(&py_cio_module);
+	if (module == NULL)
+		goto fail;
+
+	channel = py_cio_channel_type();
+	if (channel == NULL)
+		goto fail;
+
+	if (PyModule_AddObject(module, "channel", channel) < 0)
+		goto fail;
+
+	return module;
+
+fail:
+	Py_XDECREF(module);
+	return NULL;
 }

@@ -5,6 +5,8 @@
 __all__ = [
 	"routine",
 
+	"channel",
+
 	"read",
 	"write",
 
@@ -28,6 +30,29 @@ def routine(routine, *args):
 		callable = routine
 
 	_cio.routine(callable)
+
+class channel(object):
+	__slots__ = ["_channel"]
+
+	def __init__(self):
+		self._channel = _cio.channel()
+
+	def __iter__(self):
+		while True:
+			item, ok = self._channel.read()
+			if ok:
+				yield item
+			else:
+				break
+
+	def close(self):
+		self._channel.close()
+
+	def read(self):
+		return self._channel.read()
+
+	def write(self, item=None):
+		return self._channel.write(item)
 
 def read(fd, buf, size=None):
 	if size is None:

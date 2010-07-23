@@ -149,8 +149,6 @@ size_t cio_channel_item_size(const struct cio_channel *c)
  * Mark the channel as closed.  Writing is not possible immediately after this,
  * and reading is not possible after all pending writes have been completed.
  * This function may be called multiple times for a single channel.
- *
- * @todo be atomic - postpone reader scheduling and return immediately
  */
 void cio_channel_close(struct cio_channel *c)
 {
@@ -166,6 +164,7 @@ void cio_channel_close(struct cio_channel *c)
 	c->read_list.head = NULL;
 	c->read_list.tail = NULL;
 
+	/* TODO: postpone reader scheduling and return immediately (this messes up Python state) */
 	while (true) {
 		struct cio_channel_wait *read = cio_channel_wait_head(&list);
 		if (read == NULL)

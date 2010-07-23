@@ -83,5 +83,25 @@ class Socket(unittest.TestCase):
 
 		socket.close()
 
+class Channel(unittest.TestCase):
+	def test(self):
+		c = cio.channel()
+		cio.routine(self.reader, c)
+		cio.routine(self.writer, c)
+
+		cio.nonblock(1)
+		for i in range(10):
+			cio.write(1, "%d\n" % i)
+
+	def writer(self, c):
+		print(c.write("1"))
+		print(c.write("2"))
+		print("writer done")
+
+	def reader(self, c):
+		print(c.read())
+		print(c.read())
+		print("reader done")
+
 if __name__ == "__main__":
 	unittest.main()
