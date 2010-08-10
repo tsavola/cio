@@ -20,22 +20,27 @@ extern "C" {
 /**
  * @brief File descriptor may be read from.
  */
-#define CIO_INPUT  1
+#define CIO_INPUT   1
 
 /**
  * @brief File descriptor may be written to.
  */
-#define CIO_OUTPUT 2
+#define CIO_OUTPUT  2
 
 /**
  * @brief Error while waiting for I/O.
  */
-#define CIO_ERROR 4
+#define CIO_ERROR   4
 
 /**
  * @brief Hang-up while waiting for I/O.
  */
-#define CIO_HANGUP 8
+#define CIO_HANGUP  8
+
+/**
+ * @brief File descriptor was closed while waiting for I/O.
+ */
+#define CIO_CLOSE   16
 
 /**
  * @brief Buffer for saving stack and register state.
@@ -46,8 +51,7 @@ struct cio_context {
 	void *cleanup;
 };
 
-int cio_register(int fd, int events, struct cio_context *target);
-void cio_unregister(int fd);
+int cio_wait(int fd, int events);
 int cio_yield(struct cio_context *storage);
 void cio_run(struct cio_context *target, int value);
 

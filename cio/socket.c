@@ -32,15 +32,16 @@ int cio_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 	ret = connect(sockfd, addr, addrlen);
 
 	if (ret < 0 && errno == EINPROGRESS) {
-		struct cio_context context;
-
-		if (cio_register(sockfd, CIO_OUTPUT, &context) < 0)
-			return -1;
-
 		while (true) {
-			ret = cio_yield(&context);
+			ret = cio_wait(sockfd, CIO_OUTPUT);
 			if (ret < 0)
 				break;
+
+			if (ret & CIO_CLOSE) {
+				errno = ENODATA;
+				ret = -1;
+				break;
+			}
 
 			int error = 0;
 			socklen_t errorlen = sizeof (error);
@@ -59,8 +60,6 @@ int cio_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 
 			break;
 		}
-
-		cio_unregister(sockfd);
 	}
 
 	return ret;
@@ -86,7 +85,7 @@ int cio_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 }
 
 /**
- * Accept a connection on a socket.
+ * Accept a connection on a socket.  ENODATA on close.
  *
  * @param sockfd   socket file descriptor
  * @param addr     buffer for socket address or @c NULL
@@ -97,16 +96,18 @@ int cio_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
  */
 int cio_accept4(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags)
 {
-	struct cio_context context;
 	int ret;
 
-	if (cio_register(sockfd, CIO_INPUT, &context) < 0)
-		return -1;
-
 	while (true) {
-		ret = cio_yield(&context);
+		ret = cio_wait(sockfd, CIO_INPUT);
 		if (ret < 0)
 			break;
+
+		if (ret & CIO_CLOSE) {
+			errno = ENODATA;
+			ret = -1;
+			break;
+		}
 
 		ret = accept4(sockfd, addr, addrlen, flags);
 		if (ret < 0 && errno == EAGAIN)
@@ -114,8 +115,6 @@ int cio_accept4(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags
 
 		break;
 	}
-
-	cio_unregister(sockfd);
 
 	return ret;
 }

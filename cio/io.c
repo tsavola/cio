@@ -14,7 +14,6 @@
 #include <unistd.h>
 
 #include "sched.h"
-#include "trace.h"
 
 /**
  * @param event     CIO_INPUT or CIO_OUTPUT
@@ -28,19 +27,17 @@
  */
 static ssize_t cio_io(int event, enum cio_io_type type, int fd, int extra_fd, void *buf, off_t *offset, size_t count, int flags)
 {
-	struct cio_context context;
-	ssize_t len = -1;
+	ssize_t len;
 	ssize_t ret;
 
-	cio_tracef("%s: alloc context %p", __func__, &context);
-
-	if (cio_register(fd, event, &context) < 0)
-		goto no_register;
-
-	if (cio_yield(&context) < 0)
-		goto no_yield;
-
 	for (len = 0; len < count; ) {
+		int revents = cio_wait(fd, event);
+		if (revents < 0)
+			break;
+
+		if (revents & CIO_CLOSE)
+			break;
+
 		switch (type) {
 		case CIO_IO_READ:
 			ret = read(fd, buf + len, count - len);
@@ -64,31 +61,23 @@ static ssize_t cio_io(int event, enum cio_io_type type, int fd, int extra_fd, vo
 		}
 
 		if (ret < 0) {
-			if (errno == EAGAIN && ((flags & MSG_WAITALL) || len == 0)) {
-				if (cio_yield(&context) >= 0)
-					continue;
-			}
+			if (errno == EAGAIN)
+				continue;
 
 			if (len == 0)
 				len = -1;
+		} else {
+			if (offset)
+				*offset += ret;
 
-			break;
+			len += ret;
+
+			if (flags & MSG_WAITALL)
+				continue;
 		}
 
-		if (ret == 0)
-			break;
-
-		if (offset)
-			*offset += ret;
-
-		len += ret;
+		break;
 	}
-
-no_yield:
-	cio_unregister(fd);
-
-no_register:
-	cio_tracef("%s: free context %p", __func__, &context);
 
 	return len;
 }

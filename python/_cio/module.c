@@ -7,12 +7,15 @@
 #include <stddef.h>
 
 #include "channel.h"
+#include "file.h"
 #include "io.h"
 #include "routine.h"
 #include "socket.h"
 
 static PyMethodDef py_cio_methods[] = {
 	{ "routine", py_cio_routine, METH_VARARGS, NULL },
+
+	{ "close", py_cio_close, METH_VARARGS, NULL },
 
 	{ "read", py_cio_read, METH_VARARGS, NULL },
 	{ "write", py_cio_write, METH_VARARGS, NULL },

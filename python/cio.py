@@ -7,6 +7,8 @@ __all__ = [
 
 	"channel",
 
+	"close",
+
 	"read",
 	"write",
 
@@ -53,6 +55,9 @@ class channel(object):
 
 	def write(self, item=None):
 		return self._channel.write(item)
+
+def close(fd):
+	return _cio.close(fd)
 
 def read(fd, buf, size=None):
 	if size is None:

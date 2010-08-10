@@ -19,9 +19,9 @@
 int cio_sleep(const struct timespec *interval)
 {
 	int fd;
-	struct cio_context context;
 	int ret;
 	uint64_t count;
+	int saved_errno;
 
 	fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
 	if (fd < 0)
@@ -35,12 +35,8 @@ int cio_sleep(const struct timespec *interval)
 	if (ret < 0)
 		goto fail;
 
-	ret = cio_register(fd, CIO_INPUT, &context);
-	if (ret < 0)
-		goto fail;
-
 	do {
-		ret = cio_yield(&context);
+		ret = cio_wait(fd, CIO_INPUT);
 		if (ret < 0)
 			break;
 
@@ -53,10 +49,10 @@ int cio_sleep(const struct timespec *interval)
 		}
 	} while (count == 0);
 
-	cio_unregister(fd);
-
 fail:
+	saved_errno = errno;
 	close(fd);
+	errno = saved_errno;
 
 	return ret;
 }

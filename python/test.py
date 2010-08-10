@@ -17,15 +17,15 @@ class IO(unittest.TestCase):
 
 		self.reader(pipe[0], count)
 
-		os.close(pipe[0])
-		os.close(pipe[1])
+		cio.close(pipe[0])
+		cio.close(pipe[1])
 
 	def writer(self, fd, i):
 		buf = str(i)
 		n = cio.write(fd, buf)
 		print("write(%s) = %d" % (repr(buf), n))
 
-		os.close(fd)
+		cio.close(fd)
 
 	def reader(self, fd, total):
 		count = 0
@@ -70,7 +70,7 @@ class Socket(unittest.TestCase):
 				break
 			print("recv(%d) -> %s" % (fd, repr(buf[:n])))
 
-		os.close(fd)
+		cio.close(fd)
 
 	def client(self, address, i):
 		socket = socketlib.socket(socketlib.AF_INET, socketlib.SOCK_STREAM)

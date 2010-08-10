@@ -16,6 +16,7 @@ Tested on Linux/x86-64.  The scheduler doesn't know multithreading yet.
 - Low-level @link sched scheduling API @endlink
 - @link routine Routine @endlink management ( @link routine_cpp C++ @endlink )
 - @link channel Channel @endlink object ( @link channel_cpp C++ @endlink )
+- @link file File descriptor @endlink functions
 - @link io I/O @endlink functions
 - @link socket Socket @endlink functions
 - @link time Time @endlink functions

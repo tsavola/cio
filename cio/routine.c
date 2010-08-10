@@ -18,7 +18,6 @@
 #include "error-internal.h"
 #include "error.h"
 #include "sched-internal.h"
-#include "trace.h"
 
 #define STACK_SIZE          0x800000
 #define GUARD_SIZE          0x1000
@@ -120,18 +119,11 @@ void cio_routine_finish(void *arg)
 	struct cio_routine *routine = cio_arg_routine(arg);
 	struct cio_runnable node;
 
-	cio_tracef("%s: alloc runnable %p", __func__, &node);
-
 	if (cio_save(&node.context) == 0) {
 		cio_runnable(&node);
-
-		cio_tracef("%s: routine %p", __func__, routine);
-
 		setcontext(&routine->ucontext);
 		cio_abort("Failed to start routine", errno);
 	}
-
-	cio_tracef("%s: free runnable %p", __func__, &node);
 }
 
 /**
