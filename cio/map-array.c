@@ -2,7 +2,7 @@
  * Copyright (c) 2010  Timo Savola
  */
 
-#include "map-internal.h"
+#include "map-array-internal.h"
 
 #include <errno.h>
 #include <stddef.h>
@@ -10,7 +10,7 @@
 
 #include <unistd.h>
 
-static int cio_map_alloc(struct cio_map *map)
+static int cio_map_array_alloc(struct cio_map_array *map)
 {
 	if (map->vector == NULL) {
 		map->length = sysconf(_SC_OPEN_MAX);
@@ -25,7 +25,7 @@ static int cio_map_alloc(struct cio_map *map)
 	return 0;
 }
 
-static int cio_map_check(const struct cio_map *map, int fd)
+static int cio_map_array_check(const struct cio_map_array *map, int fd)
 {
 	if (map->vector == NULL) {
 		errno = ENOENT;
@@ -40,12 +40,12 @@ static int cio_map_check(const struct cio_map *map, int fd)
 	return 0;
 }
 
-int cio_map_add(struct cio_map *map, int fd, void *node)
+int cio_map_array_add(struct cio_map_array *map, int fd, void *node)
 {
-	if (cio_map_alloc(map) < 0)
+	if (cio_map_array_alloc(map) < 0)
 		return -1;
 
-	if (cio_map_check(map, fd) < 0)
+	if (cio_map_array_check(map, fd) < 0)
 		return -1;
 
 	if (map->vector[fd]) {
@@ -57,17 +57,17 @@ int cio_map_add(struct cio_map *map, int fd, void *node)
 	return 0;
 }
 
-void *cio_map_find(const struct cio_map *map, int fd)
+void *cio_map_array_find(const struct cio_map_array *map, int fd)
 {
-	if (cio_map_check(map, fd) < 0)
+	if (cio_map_array_check(map, fd) < 0)
 		return NULL;
 
 	return map->vector[fd];
 }
 
-int cio_map_remove(struct cio_map *map, int fd)
+int cio_map_array_remove(struct cio_map_array *map, int fd)
 {
-	if (cio_map_check(map, fd) < 0)
+	if (cio_map_array_check(map, fd) < 0)
 		return -1;
 
 	if (map->vector[fd] == NULL) {
