@@ -4,54 +4,77 @@
 
 #include "map-internal.h"
 
+#include <errno.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #include <unistd.h>
 
-static int cio_map_impl_array = -1;
-
-static int cio_map_init(void)
+static int cio_map_alloc(struct cio_map *map)
 {
-	if (cio_map_impl_array >= 0)
-		return 0;
+	if (map->vector == NULL) {
+		map->length = sysconf(_SC_OPEN_MAX);
+		if (map->length < 0)
+			return -1;
 
-	long length = sysconf(_SC_OPEN_MAX);
-	if (length < 0)
+		map->vector = calloc(map->length, sizeof (void *));
+		if (map->vector == NULL)
+			return -1;
+	}
+
+	return 0;
+}
+
+static int cio_map_check(const struct cio_map *map, int fd)
+{
+	if (map->vector == NULL) {
+		errno = ENOENT;
 		return -1;
+	}
 
-	cio_map_impl_array = (length <= CIO_ARRAY_LIMIT);
+	if (fd < 0 || fd >= map->length) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	return 0;
 }
 
 int cio_map_add(struct cio_map *map, int fd, void *node)
 {
-	if (cio_map_init() < 0)
+	if (cio_map_alloc(map) < 0)
 		return -1;
 
-	if (cio_map_impl_array)
-		return cio_map_array_add(&map->u.array, fd, node);
-	else
-		return cio_map_tree_add(&map->u.tree, fd, node);
+	if (cio_map_check(map, fd) < 0)
+		return -1;
+
+	if (map->vector[fd]) {
+		errno = EEXIST;
+		return -1;
+	}
+
+	map->vector[fd] = node;
+	return 0;
 }
 
 void *cio_map_find(const struct cio_map *map, int fd)
 {
-	if (cio_map_init() < 0)
+	if (cio_map_check(map, fd) < 0)
 		return NULL;
 
-	if (cio_map_impl_array)
-		return cio_map_array_find(&map->u.array, fd);
-	else
-		return cio_map_tree_find(&map->u.tree, fd);
+	return map->vector[fd];
 }
 
 int cio_map_remove(struct cio_map *map, int fd)
 {
-	if (cio_map_init() < 0)
+	if (cio_map_check(map, fd) < 0)
 		return -1;
 
-	if (cio_map_impl_array)
-		return cio_map_array_remove(&map->u.array, fd);
-	else
-		return cio_map_tree_remove(&map->u.tree, fd);
+	if (map->vector[fd] == NULL) {
+		errno = ENOENT;
+		return -1;
+	}
+
+	map->vector[fd] = NULL;
+	return 0;
 }

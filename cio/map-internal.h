@@ -5,27 +5,12 @@
 #ifndef CIO_MAP_INTERNAL_H
 #define CIO_MAP_INTERNAL_H
 
-#include "map-tree-internal.h"
-#include "map-array-internal.h"
-
 /**
- * File descriptor-addressed intrusive map structure.
+ * File descriptor-addressed map.
  */
 struct cio_map {
-	union {
-		struct cio_map_array array;
-		struct cio_map_tree tree;
-	} u;
-};
-
-/**
- * The node structs in cio_map must embed this at the start.
- */
-struct cio_map_node {
-	union {
-		struct cio_map_array_node array;
-		struct cio_map_tree_node tree;
-	} u;
+	int length;
+	void **vector;
 };
 
 /**

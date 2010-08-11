@@ -23,7 +23,6 @@
 #include "map-internal.h"
 
 struct cio_wait {
-	struct cio_map_node map_node;
 	struct cio_context context;
 };
 
